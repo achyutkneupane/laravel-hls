@@ -7,6 +7,7 @@ namespace AchyutN\LaravelHLS\Actions;
 use AchyutN\LaravelHLS\Jobs\UpdateConversionProgress;
 use Exception;
 use FFMpeg\Format\Video\X264;
+use FFMpeg\Format\Video\H264;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Prompts\Progress;
@@ -50,27 +51,11 @@ final class ConvertToHLS
 
         foreach ($lowerResolutions as $resolution => $res) {
             $bitrate = $kiloBitRates[$resolution] ?? 1000;
-            $formats[] = (new X264)
-                ->setKiloBitrate($bitrate)
-                ->setAudioKiloBitrate(128)
-                ->setAdditionalParameters([
-                    '-vf', 'scale='.self::renameResolution($res),
-                    '-tune', 'zerolatency',
-                    '-preset', 'veryfast',
-                    '-crf', '22',
-                ]);
+            $formats[] = self::createVideoFormat($bitrate, $res);
         }
 
         if ($formats === []) {
-            $formats[] = (new X264)
-                ->setKiloBitrate($fileBitrate)
-                ->setAudioKiloBitrate(128)
-                ->setAdditionalParameters([
-                    '-vf', 'scale='.self::renameResolution($fileResolution),
-                    '-tune', 'zerolatency',
-                    '-preset', 'veryfast',
-                    '-crf', '22',
-                ]);
+            $formats[] = self::createVideoFormat($fileBitrate, $fileResolution);
         }
 
         try {
@@ -168,5 +153,109 @@ final class ConvertToHLS
         }
 
         return "{$parts[0]}:{$parts[1]}";
+    }
+
+    /**
+     * Create a video format with appropriate encoder based on GPU configuration.
+     *
+     * @param  int  $bitrate  The bitrate in kbps.
+     * @param  string  $resolution  The resolution string in the format '{width}x{height}'.
+     * @return X264|H264 The video format instance.
+     */
+    private static function createVideoFormat(int $bitrate, string $resolution): X264|H264
+    {
+        $useGpu = config('hls.use_gpu_acceleration', false);
+
+        if ($useGpu) {
+            return self::createGPUFormat($bitrate, $resolution);
+        }
+
+        return self::createCPUFormat($bitrate, $resolution);
+    }
+
+        /**
+     * Create a GPU-accelerated video format using NVIDIA NVENC.
+     *
+     * @param  int  $bitrate  The bitrate in kbps.
+     * @param  string  $resolution  The resolution string in the format '{width}x{height}'.
+     * @return H264 The video format instance.
+     * @throws Exception If GPU acceleration is not available.
+     */
+    private static function createGPUFormat(int $bitrate, string $resolution): H264
+    {
+        if (!self::isGPUAvailable()) {
+            throw new Exception('GPU acceleration is enabled but NVIDIA GPU with NVENC support is not available. Please ensure NVIDIA drivers are installed and NVENC is supported.');
+        }
+
+        $gpuDevice = config('hls.gpu_device', 'auto');
+        $gpuPreset = config('hls.gpu_preset', 'fast');
+        $gpuProfile = config('hls.gpu_profile', 'high');
+
+        $format = new H264();
+        $format->setKiloBitrate($bitrate);
+        $format->setAudioKiloBitrate(128);
+
+        $additionalParams = [
+            '-vf', 'scale='.self::renameResolution($resolution),
+            '-c:v', 'h264_nvenc',
+            '-preset', $gpuPreset,
+            '-profile:v', $gpuProfile,
+            '-rc', 'vbr',
+            '-cq', '22',
+        ];
+
+        if ($gpuDevice !== 'auto') {
+            $additionalParams[] = '-gpu';
+            $additionalParams[] = $gpuDevice;
+        }
+
+        $format->setAdditionalParameters($additionalParams);
+
+        return $format;
+    }
+
+    /**
+     * Create a CPU-based video format using X264.
+     *
+     * @param  int  $bitrate  The bitrate in kbps.
+     * @param  string  $resolution  The resolution string in the format '{width}x{height}'.
+     * @return X264 The video format instance.
+     */
+    private static function createCPUFormat(int $bitrate, string $resolution): X264
+    {
+        $format = new X264();
+        $format->setKiloBitrate($bitrate);
+        $format->setAudioKiloBitrate(128);
+        $format->setAdditionalParameters([
+            '-vf', 'scale='.self::renameResolution($resolution),
+            '-tune', 'zerolatency',
+            '-preset', 'veryfast',
+            '-crf', '22',
+        ]);
+
+        return $format;
+    }
+
+    /**
+     * Check if NVIDIA GPU with NVENC support is available.
+     *
+     * @return bool True if GPU acceleration is available, false otherwise.
+     */
+    private static function isGPUAvailable(): bool
+    {
+        // Check if ffmpeg supports NVENC
+        $output = [];
+        $returnCode = 0;
+
+        exec('ffmpeg -hide_banner -encoders 2>&1', $output, $returnCode);
+
+        if ($returnCode !== 0) {
+            return false;
+        }
+
+        $output = implode("\n", $output);
+
+        // Check for h264_nvenc encoder
+        return str_contains($output, 'h264_nvenc');
     }
 }

@@ -13,8 +13,14 @@
 
 This package makes use of the [laravel-ffmpeg](https://github.com/protonemedia/laravel-ffmpeg) package to handle video
 processing and conversion to HLS format. It provides a simple way to convert video files stored in your Laravel
-application into HLS
-streams, which can be used for adaptive bitrate streaming.
+application into HLS streams, which can be used for adaptive bitrate streaming.
+
+**Features:**
+- 🚀 **GPU Acceleration**: Support for NVIDIA GPU acceleration using NVENC encoder for faster video processing
+- 💻 **CPU Fallback**: Automatic fallback to CPU encoding when GPU is not available
+- 🔒 **AES-128 Encryption**: Built-in encryption for secure video streaming
+- 📊 **Progress Tracking**: Real-time conversion progress monitoring
+- 🎯 **Adaptive Bitrate**: Multiple resolution and bitrate support for optimal streaming
 
 ## Installation
 
@@ -123,8 +129,59 @@ You can configure the package by editing the `config/hls.php` file. Below are th
 | `model_aliases`                         | An array of model aliases for easy access to HLS conversion.                                   | `array`  | `[]`                  |
 | `register_routes`                       | Whether to register the HLS playlist routes automatically.                                     | `bool`   | `true`                |
 | `delete_original_file_after_conversion` | A bool to turn on/off deleting the original video after conversion.                            | `bool`   | `false`               |
+| `use_gpu_acceleration`                  | Whether to use NVIDIA GPU acceleration for video encoding.                                     | `bool`   | `false`               |
+| `gpu_device`                            | The NVIDIA GPU device to use (0, 1, 2, etc.) or 'auto' for automatic selection.              | `string` | `auto`                |
+| `gpu_preset`                            | The NVIDIA encoder preset (fast, medium, slow, hq, ll, llhq, lossless, losslesshq).           | `string` | `fast`                |
+| `gpu_profile`                           | The NVIDIA encoder profile (baseline, main, high).                                            | `string` | `high`                |
 
 > 💡 Tip: All disk values must be valid disks defined in your `config/filesystems.php`.
+
+### GPU Acceleration Configuration
+
+The package supports NVIDIA GPU acceleration for faster video encoding. To enable GPU acceleration, you need:
+
+1. **NVIDIA GPU** with NVENC support (GTX 600 series or newer)
+2. **NVIDIA drivers** installed on your system
+3. **FFmpeg** compiled with NVENC support
+
+#### Enabling GPU Acceleration
+
+```php
+// In config/hls.php
+'use_gpu_acceleration' => true,
+'gpu_device' => 'auto',        // or specific GPU index like '0', '1'
+'gpu_preset' => 'fast',        // fast, medium, slow, hq, ll, llhq, lossless, losslesshq
+'gpu_profile' => 'high',       // baseline, main, high
+```
+
+#### GPU Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `use_gpu_acceleration` | Enable/disable GPU acceleration | `false` |
+| `gpu_device` | GPU device index or 'auto' | `auto` |
+| `gpu_preset` | Quality/speed balance | `fast` |
+| `gpu_profile` | H.264 profile for compatibility | `high` |
+
+#### Automatic Fallback
+
+If GPU acceleration is enabled but NVIDIA GPU with NVENC support is not available, the package will automatically throw an exception with a clear error message. This ensures your application doesn't fail silently.
+
+#### Checking GPU Availability
+
+You can check if your system supports GPU acceleration by running:
+
+```bash
+ffmpeg -hide_banner -encoders | grep h264_nvenc
+```
+
+If this command returns output containing `h264_nvenc`, your system supports GPU acceleration.
+
+#### Troubleshooting GPU Issues
+
+- **"GPU acceleration is enabled but NVIDIA GPU with NVENC support is not available"**: Ensure you have NVIDIA drivers installed and FFmpeg compiled with NVENC support
+- **Poor performance**: Try different presets (`fast`, `medium`, `slow`) to find the best balance for your use case
+- **Compatibility issues**: Use `baseline` or `main` profile instead of `high` for broader device compatibility
 
 ### Model-Level Configuration
 
