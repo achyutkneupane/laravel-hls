@@ -172,9 +172,14 @@ final class ConvertToHLS
 
     private static function createCPUFormat(int $bitrate, string $resolution): X264
     {
-        $format = new X264('libx264', 'aac');
-        $format->setKiloBitrate($bitrate)->setAudioKiloBitrate(128);
-        $format->setAdditionalParameters(['-vf', 'scale='.self::renameResolution($resolution), '-preset', 'veryfast', '-crf', '22']);
+        $format = new X264();
+        $format->setKiloBitrate($bitrate);
+        $format->setAudioKiloBitrate(128);
+        $format->setAdditionalParameters([
+            '-vf', 'scale='.self::renameResolution($resolution),
+            '-preset', 'veryfast',
+            '-crf', '22',
+        ]);
         return $format;
     }
 
