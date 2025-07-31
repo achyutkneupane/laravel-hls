@@ -28,6 +28,14 @@ final class ConvertToHLS
     {
         $startTime = microtime(true);
         $wasGpuUsed = false;
+        $useGpu = config('hls.use_gpu_acceleration', false);
+
+        Log::info("Starting HLS conversion for: {$inputPath}");
+        Log::info("GPU acceleration enabled: " . ($useGpu ? 'YES' : 'NO'));
+
+        if ($isRetry) {
+            Log::info("This is a retry attempt using CPU fallback");
+        }
 
         try {
             $resolutions = config('hls.resolutions');
@@ -45,23 +53,34 @@ final class ConvertToHLS
 
             $formats = [];
             $lowerResolutions = array_filter($resolutions, fn ($resolution): bool => self::extractResolution($resolution)['height'] <= self::extractResolution($fileResolution)['height']);
-            $useGpu = config('hls.use_gpu_acceleration', false);
+
+            Log::info("📊 Processing " . count($lowerResolutions) . " resolutions: " . implode(', ', array_keys($lowerResolutions)));
+            Log::info("📹 Original video resolution: {$fileResolution}, bitrate: {$fileBitrate}k");
 
             foreach ($lowerResolutions as $resolution => $res) {
                 $bitrate = $kiloBitRates[$resolution] ?? 1000;
+                Log::info("🎬 Creating format for resolution: {$resolution} with bitrate: {$bitrate}k");
+
                 $format = self::createVideoFormat((int) $bitrate, $res, $isRetry);
                 $formats[] = $format;
 
                 // ✅ FINAL POLISH: More accurate GPU usage tracking
                 if ($useGpu && !$isRetry && self::isGPUFormat($format)) {
                     $wasGpuUsed = true;
+                    Log::info("🚀 GPU format created for resolution: {$resolution}");
+                } else {
+                    Log::info("🖥️ CPU format created for resolution: {$resolution}");
                 }
             }
             if (empty($formats)) {
+                Log::info("⚠️ No resolutions found, using original video format");
                 $format = self::createVideoFormat((int) $fileBitrate, $fileResolution, $isRetry);
                 $formats[] = $format;
                 if ($useGpu && !$isRetry && self::isGPUFormat($format)) {
                     $wasGpuUsed = true;
+                    Log::info("🚀 GPU format created for original resolution");
+                } else {
+                    Log::info("🖥️ CPU format created for original resolution");
                 }
             }
 
@@ -69,6 +88,9 @@ final class ConvertToHLS
             foreach ($formats as $format) {
                 $export->addFormat($format);
             }
+
+            Log::info("🔄 Starting conversion process...");
+            Log::info("🎯 Target: {$outputFolder}/{$hlsOutputPath}/playlist.m3u8");
             info('Started conversion for resolutions: '.implode(', ', array_keys($lowerResolutions)));
 
             $progress = progress(label: 'Converting video to HLS format...', steps: 100);
@@ -88,6 +110,9 @@ final class ConvertToHLS
 
             if ($wasGpuUsed) {
                 self::logGPUPerformance($startTime);
+                Log::info("✅ GPU conversion completed successfully!");
+            } else {
+                Log::info("✅ CPU conversion completed successfully!");
             }
 
         } catch (Exception $e) {
@@ -136,12 +161,17 @@ final class ConvertToHLS
     private static function createVideoFormat(int $bitrate, string $resolution, bool $isRetry): X264
     {
         $useGpu = config('hls.use_gpu_acceleration', false);
+
         if ($useGpu && !$isRetry && self::isGPUAvailable()) {
+            Log::info("🔍 GPU is available, creating GPU format...");
             return self::createGPUFormat($bitrate, $resolution);
         }
+
         if ($useGpu && !$isRetry) {
-            Log::warning('GPU acceleration enabled but GPU not available. Falling back to CPU.');
+            Log::warning('⚠️ GPU acceleration enabled but GPU not available. Falling back to CPU.');
         }
+
+        Log::info("🔍 Creating CPU format...");
         return self::createCPUFormat($bitrate, $resolution);
     }
 
@@ -151,6 +181,13 @@ final class ConvertToHLS
         $gpuDevice = config('hls.gpu_device', 'auto');
         $gpuPreset = config('hls.gpu_preset', 'fast');
         $gpuProfile = config('hls.gpu_profile', 'high');
+
+        Log::info("🚀 Creating GPU format with:");
+        Log::info("   - Device: {$gpuDevice}");
+        Log::info("   - Preset: {$gpuPreset}");
+        Log::info("   - Profile: {$gpuProfile}");
+        Log::info("   - Bitrate: {$bitrate}k");
+        Log::info("   - Resolution: {$resolution}");
 
         $format = new X264();
         $format->setKiloBitrate($bitrate);
@@ -172,11 +209,19 @@ final class ConvertToHLS
             $additionalParams[] = $gpuDevice;
         }
         $format->setAdditionalParameters($additionalParams);
+
+        Log::info("✅ GPU format created successfully");
         return $format;
     }
 
     private static function createCPUFormat(int $bitrate, string $resolution): X264
     {
+        Log::info("🖥️ Creating CPU format with:");
+        Log::info("   - Bitrate: {$bitrate}k");
+        Log::info("   - Resolution: {$resolution}");
+        Log::info("   - Preset: veryfast");
+        Log::info("   - CRF: 22");
+
         $format = new X264();
         $format->setKiloBitrate($bitrate);
         $format->setAudioKiloBitrate(128);
@@ -185,27 +230,49 @@ final class ConvertToHLS
             '-preset', 'veryfast',
             '-crf', '22',
         ]);
+
+        Log::info("✅ CPU format created successfully");
         return $format;
     }
 
     private static function isGPUAvailable(): bool
     {
+        Log::info("🔍 Checking GPU availability...");
+
         try {
-            if (!function_exists('shell_exec')) return false;
+            if (!function_exists('shell_exec')) {
+                Log::warning('❌ GPU check failed: shell_exec function not available.');
+                return false;
+            }
 
             self::$ffmpegPath = self::findBinary('ffmpeg');
             if (empty(self::$ffmpegPath)) {
-                Log::warning('GPU check failed: ffmpeg binary not found.');
+                Log::warning('❌ GPU check failed: ffmpeg binary not found.');
                 return false;
             }
+
+            Log::info("✅ FFmpeg found at: " . self::$ffmpegPath);
+
             $encoders = shell_exec(self::$ffmpegPath . ' -hide_banner -encoders 2>&1');
             if (!str_contains($encoders, 'h264_nvenc')) {
-                Log::warning('GPU check failed: ffmpeg build does not support h264_nvenc.');
+                Log::warning('❌ GPU check failed: ffmpeg build does not support h264_nvenc.');
                 return false;
             }
-            return self::hasSufficientGPUMemory() && self::isGPUTempOK();
+
+            Log::info("✅ NVENC encoder found in FFmpeg");
+
+            $memoryOK = self::hasSufficientGPUMemory();
+            $tempOK = self::isGPUTempOK();
+
+            if ($memoryOK && $tempOK) {
+                Log::info("✅ GPU is available and ready for use!");
+                return true;
+            } else {
+                Log::warning("❌ GPU check failed: Memory or temperature issues.");
+                return false;
+            }
         } catch (Exception $e) {
-            Log::error('GPU availability check failed: ' . $e->getMessage());
+            Log::error('❌ GPU availability check failed: ' . $e->getMessage());
             return false;
         }
     }
