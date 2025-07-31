@@ -178,5 +178,40 @@ return [
      */
     'delete_original_file_after_conversion' => false,
 
+    /**
+     * This determines whether to use NVIDIA GPU acceleration for video encoding.
+     * When enabled, the conversion will use NVENC encoder for faster processing.
+     * Requires NVIDIA GPU with NVENC support and proper drivers installed.
+     *
+     * Default: false
+     */
+    'use_gpu_acceleration' => false,
+
+    /**
+     * The NVIDIA GPU device to use for encoding.
+     * This should be the GPU index (0, 1, 2, etc.) or 'auto' for automatic selection.
+     * Only used when 'use_gpu_acceleration' is true.
+     *
+     * Default: 'auto'
+     */
+    'gpu_device' => 'auto',
+
+    /**
+     * The NVIDIA encoder preset to use for GPU acceleration.
+     * Options: 'fast', 'medium', 'slow', 'hq', 'll', 'llhq', 'lossless', 'losslesshq'
+     * Only used when 'use_gpu_acceleration' is true.
+     *
+     * Default: 'fast'
+     */
+    'gpu_preset' => 'fast',
+
+    /**
+     * The NVIDIA encoder profile to use for GPU acceleration.
+     * Options: 'baseline', 'main', 'high'
+     * Only used when 'use_gpu_acceleration' is true.
+     *
+     * Default: 'high'
+     */
+    'gpu_profile' => 'high',
 
 ];
