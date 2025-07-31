@@ -42,6 +42,9 @@ final class QueueHLSConversion implements ShouldQueue
      */
     public function handle(): void
     {
+        config('laravel-ffmpeg.temporary_files_encrypted_hls', config('hls.temp_hls_storage_path'));
+        config('laravel-ffmpeg.temporary_files_root', config('hls.temp_storage_path'));
+
         CheckForDatabaseColumns::handle($this->model);
 
         $original_path = $this->model->getVideoPath();

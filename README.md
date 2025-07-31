@@ -129,6 +129,7 @@ You can configure the package by editing the `config/hls.php` file. Below are th
 | `hls_output_path`                       | Path relative to `hls_disk` where HLS files are saved.                                         | `string` | `hls`                 |
 | `secrets_output_path`                   | Path relative to `secrets_disk` where encryption secrets are saved.                            | `string` | `secrets`             |
 | `temp_storage_path`                     | Specify where the conversion tmp files are saved.                                              | `string` | `tmp`                 |
+| `temp_hls_storage_path`                 | Specify where the hls conversion tmp files are saved.                                          | `string` | `tmp`                 |
 | `model_aliases`                         | An array of model aliases for easy access to HLS conversion.                                   | `array`  | `[]`                  |
 | `register_routes`                       | Whether to register the HLS playlist routes automatically.                                     | `bool`   | `true`                |
 | `delete_original_file_after_conversion` | A bool to turn on/off deleting the original video after conversion.                            | `bool`   | `false`               |
@@ -140,6 +141,8 @@ You can configure the package by editing the `config/hls.php` file. Below are th
 | `gpu_max_temp`                          | Maximum GPU temperature in Celsius before falling back to CPU.                                | `int`    | `85`                  |
 
 > 💡 Tip: All disk values must be valid disks defined in your `config/filesystems.php`.
+
+> 💡 Tip: If you are getting issues with "No key URI specified in key info file" please review this documentation https://github.com/protonemedia/laravel-ffmpeg?tab=readme-ov-file#encrypted-hls
 
 ### Advanced GPU Acceleration Configuration
 

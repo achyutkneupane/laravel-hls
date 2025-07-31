@@ -144,6 +144,13 @@ return [
     'temp_storage_path' => 'tmp',
 
     /**
+     * The path where the conversion temp files are stored.
+     *
+     * Default: 'tmp'
+     */
+    'temp_hls_storage_path' => 'tmp',
+
+    /**
      * The model aliases to detect the class for conversion.
      * This should be an array of model class names that
      * implement the ConvertsToHLS trait.
