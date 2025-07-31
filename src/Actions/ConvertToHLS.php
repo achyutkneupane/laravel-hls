@@ -7,7 +7,6 @@ namespace AchyutN\LaravelHLS\Actions;
 use AchyutN\LaravelHLS\Jobs\UpdateConversionProgress;
 use Exception;
 use FFMpeg\Format\Video\X264;
-use FFMpeg\Format\Video\H264;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -54,14 +53,14 @@ final class ConvertToHLS
                 $formats[] = $format;
 
                 // ✅ FINAL POLISH: More accurate GPU usage tracking
-                if ($useGpu && !$isRetry && $format instanceof H264) {
+                if ($useGpu && !$isRetry && self::isGPUFormat($format)) {
                     $wasGpuUsed = true;
                 }
             }
             if (empty($formats)) {
                 $format = self::createVideoFormat((int) $fileBitrate, $fileResolution, $isRetry);
                 $formats[] = $format;
-                if ($useGpu && !$isRetry && $format instanceof H264) {
+                if ($useGpu && !$isRetry && self::isGPUFormat($format)) {
                     $wasGpuUsed = true;
                 }
             }
@@ -134,7 +133,7 @@ final class ConvertToHLS
         return "{$parts[0]}:{$parts[1]}";
     }
 
-    private static function createVideoFormat(int $bitrate, string $resolution, bool $isRetry): X264|H264
+    private static function createVideoFormat(int $bitrate, string $resolution, bool $isRetry): X264
     {
         $useGpu = config('hls.use_gpu_acceleration', false);
         if ($useGpu && !$isRetry && self::isGPUAvailable()) {
@@ -146,19 +145,25 @@ final class ConvertToHLS
         return self::createCPUFormat($bitrate, $resolution);
     }
 
-    private static function createGPUFormat(int $bitrate, string $resolution): H264
+    private static function createGPUFormat(int $bitrate, string $resolution): X264
     {
         self::validateGPUConfig();
         $gpuDevice = config('hls.gpu_device', 'auto');
         $gpuPreset = config('hls.gpu_preset', 'fast');
         $gpuProfile = config('hls.gpu_profile', 'high');
 
-        $format = new H264();
-        $format->setKiloBitrate($bitrate)->setAudioKiloBitrate(128);
+        $format = new X264();
+        $format->setKiloBitrate($bitrate);
+        $format->setAudioKiloBitrate(128);
         $additionalParams = [
-            '-vf', 'scale='.self::renameResolution($resolution), '-c:v', 'h264_nvenc',
-            '-c:a', 'aac', '-preset', $gpuPreset, '-profile:v', $gpuProfile,
-            '-rc', 'cbr', '-b:v', $bitrate.'k', '-maxrate', $bitrate.'k',
+            '-vf', 'scale='.self::renameResolution($resolution),
+            '-c:v', 'h264_nvenc',
+            '-c:a', 'aac',
+            '-preset', $gpuPreset,
+            '-profile:v', $gpuProfile,
+            '-rc', 'cbr',
+            '-b:v', $bitrate.'k',
+            '-maxrate', $bitrate.'k',
             '-bufsize', ($bitrate * 2).'k',
         ];
 
@@ -253,6 +258,12 @@ final class ConvertToHLS
     {
         $duration = microtime(true) - $startTime;
         Log::info("GPU conversion completed in " . round($duration, 2) . " seconds.");
+    }
+
+    private static function isGPUFormat(X264 $format): bool
+    {
+        $params = $format->getAdditionalParameters();
+        return in_array('-c:v', $params) && in_array('h264_nvenc', $params);
     }
 
     private static function findBinary(string $name, array $customPaths = []): string
