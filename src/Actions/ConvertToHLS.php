@@ -67,7 +67,12 @@ final class ConvertToHLS
                 // ✅ FINAL POLISH: More accurate GPU usage tracking
                 if ($useGpu && !$isRetry && self::isGPUFormat($format)) {
                     $wasGpuUsed = true;
-                    Log::info("🚀 GPU format created for resolution: {$resolution}");
+                    $gpuType = self::detectBestGPU();
+                    if ($gpuType === 'apple') {
+                        Log::info("🍎 Apple Silicon format created for resolution: {$resolution}");
+                    } else {
+                        Log::info("🚀 NVIDIA GPU format created for resolution: {$resolution}");
+                    }
                 } else {
                     Log::info("🖥️ CPU format created for resolution: {$resolution}");
                 }
@@ -78,7 +83,12 @@ final class ConvertToHLS
                 $formats[] = $format;
                 if ($useGpu && !$isRetry && self::isGPUFormat($format)) {
                     $wasGpuUsed = true;
-                    Log::info("🚀 GPU format created for original resolution");
+                    $gpuType = self::detectBestGPU();
+                    if ($gpuType === 'apple') {
+                        Log::info("🍎 Apple Silicon format created for original resolution");
+                    } else {
+                        Log::info("🚀 NVIDIA GPU format created for original resolution");
+                    }
                 } else {
                     Log::info("🖥️ CPU format created for original resolution");
                 }
@@ -110,7 +120,12 @@ final class ConvertToHLS
 
             if ($wasGpuUsed) {
                 self::logGPUPerformance($startTime);
-                Log::info("✅ GPU conversion completed successfully!");
+                $gpuType = self::detectBestGPU();
+                if ($gpuType === 'apple') {
+                    Log::info("✅ Apple Silicon conversion completed successfully!");
+                } else {
+                    Log::info("✅ NVIDIA GPU conversion completed successfully!");
+                }
             } else {
                 Log::info("✅ CPU conversion completed successfully!");
             }
@@ -158,24 +173,29 @@ final class ConvertToHLS
         return "{$parts[0]}:{$parts[1]}";
     }
 
-    private static function createVideoFormat(int $bitrate, string $resolution, bool $isRetry): X264
+        private static function createVideoFormat(int $bitrate, string $resolution, bool $isRetry): X264
     {
         $useGpu = config('hls.use_gpu_acceleration', false);
 
-        if ($useGpu && !$isRetry && self::isGPUAvailable()) {
-            Log::info("🔍 GPU is available, creating GPU format...");
-            return self::createGPUFormat($bitrate, $resolution);
-        }
-
         if ($useGpu && !$isRetry) {
-            Log::warning('⚠️ GPU acceleration enabled but GPU not available. Falling back to CPU.');
+            $gpuType = self::detectBestGPU();
+
+            if ($gpuType === 'nvidia') {
+                Log::info("🔍 NVIDIA GPU detected, creating NVIDIA format...");
+                return self::createNvidiaFormat($bitrate, $resolution);
+            } elseif ($gpuType === 'apple') {
+                Log::info("🔍 Apple Silicon detected, creating Apple format...");
+                return self::createAppleFormat($bitrate, $resolution);
+            } else {
+                Log::warning('⚠️ GPU acceleration enabled but no compatible GPU found. Falling back to CPU.');
+            }
         }
 
         Log::info("🔍 Creating CPU format...");
         return self::createCPUFormat($bitrate, $resolution);
     }
 
-    private static function createGPUFormat(int $bitrate, string $resolution): X264
+    private static function createNvidiaFormat(int $bitrate, string $resolution): X264
     {
         self::validateGPUConfig();
         $gpuDevice = config('hls.gpu_device', 'auto');
@@ -210,7 +230,35 @@ final class ConvertToHLS
         }
         $format->setAdditionalParameters($additionalParams);
 
-        Log::info("✅ GPU format created successfully");
+        Log::info("✅ NVIDIA GPU format created successfully");
+        return $format;
+    }
+
+    private static function createAppleFormat(int $bitrate, string $resolution): X264
+    {
+        Log::info("🍎 Creating Apple Silicon format with:");
+        Log::info("   - Bitrate: {$bitrate}k");
+        Log::info("   - Resolution: {$resolution}");
+        Log::info("   - Encoder: h264_videotoolbox");
+        Log::info("   - Profile: main");
+
+        $format = new X264();
+        $format->setKiloBitrate($bitrate);
+        $format->setAudioKiloBitrate(128);
+        $additionalParams = [
+            '-vf', 'scale='.self::renameResolution($resolution),
+            '-c:v', 'h264_videotoolbox',
+            '-c:a', 'aac',
+            '-profile:v', 'main',
+            '-allow_sw', '1',  // Allow software fallback if needed
+            '-b:v', $bitrate.'k',
+            '-maxrate', $bitrate.'k',
+            '-bufsize', ($bitrate * 2).'k',
+        ];
+
+        $format->setAdditionalParameters($additionalParams);
+
+        Log::info("✅ Apple Silicon format created successfully");
         return $format;
     }
 
@@ -235,46 +283,62 @@ final class ConvertToHLS
         return $format;
     }
 
-    private static function isGPUAvailable(): bool
+        private static function detectBestGPU(): string
     {
-        Log::info("🔍 Checking GPU availability...");
+        Log::info("🔍 Detecting best available GPU...");
 
         try {
             if (!function_exists('shell_exec')) {
-                Log::warning('❌ GPU check failed: shell_exec function not available.');
-                return false;
+                Log::warning('❌ GPU detection failed: shell_exec function not available.');
+                return 'cpu';
             }
 
             self::$ffmpegPath = self::findBinary('ffmpeg');
             if (empty(self::$ffmpegPath)) {
-                Log::warning('❌ GPU check failed: ffmpeg binary not found.');
-                return false;
+                Log::warning('❌ GPU detection failed: ffmpeg binary not found.');
+                return 'cpu';
             }
 
             Log::info("✅ FFmpeg found at: " . self::$ffmpegPath);
 
             $encoders = shell_exec(self::$ffmpegPath . ' -hide_banner -encoders 2>&1');
-            if (!str_contains($encoders, 'h264_nvenc')) {
-                Log::warning('❌ GPU check failed: ffmpeg build does not support h264_nvenc.');
-                return false;
+
+            // Check for Apple Silicon (VideoToolbox)
+            if (str_contains($encoders, 'h264_videotoolbox')) {
+                Log::info("🍎 Apple Silicon (VideoToolbox) detected!");
+                return 'apple';
             }
 
-            Log::info("✅ NVENC encoder found in FFmpeg");
+            // Check for NVIDIA (NVENC)
+            if (str_contains($encoders, 'h264_nvenc')) {
+                Log::info("🚀 NVIDIA GPU (NVENC) detected!");
 
-            $memoryOK = self::hasSufficientGPUMemory();
-            $tempOK = self::isGPUTempOK();
+                // Check NVIDIA memory and temperature
+                $memoryOK = self::hasSufficientGPUMemory();
+                $tempOK = self::isGPUTempOK();
 
-            if ($memoryOK && $tempOK) {
-                Log::info("✅ GPU is available and ready for use!");
-                return true;
-            } else {
-                Log::warning("❌ GPU check failed: Memory or temperature issues.");
-                return false;
+                if ($memoryOK && $tempOK) {
+                    Log::info("✅ NVIDIA GPU is available and ready for use!");
+                    return 'nvidia';
+                } else {
+                    Log::warning("❌ NVIDIA GPU check failed: Memory or temperature issues.");
+                    return 'cpu';
+                }
             }
+
+            Log::warning("❌ No compatible GPU found. Using CPU.");
+            return 'cpu';
+
         } catch (Exception $e) {
-            Log::error('❌ GPU availability check failed: ' . $e->getMessage());
-            return false;
+            Log::error('❌ GPU detection failed: ' . $e->getMessage());
+            return 'cpu';
         }
+    }
+
+    private static function isGPUAvailable(): bool
+    {
+        $gpuType = self::detectBestGPU();
+        return in_array($gpuType, ['nvidia', 'apple']);
     }
 
     private static function hasSufficientGPUMemory(): bool
@@ -330,7 +394,8 @@ final class ConvertToHLS
     private static function isGPUFormat(X264 $format): bool
     {
         $params = $format->getAdditionalParameters();
-        return in_array('-c:v', $params) && in_array('h264_nvenc', $params);
+        return (in_array('-c:v', $params) && in_array('h264_nvenc', $params)) ||
+               (in_array('-c:v', $params) && in_array('h264_videotoolbox', $params));
     }
 
     private static function findBinary(string $name, array $customPaths = []): string

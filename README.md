@@ -16,7 +16,8 @@ processing and conversion to HLS format. It provides a simple way to convert vid
 application into HLS streams, which can be used for adaptive bitrate streaming.
 
 **Features:**
-- 🚀 **Advanced GPU Acceleration**: Full NVIDIA GPU acceleration with NVENC encoder, automatic fallback, and health monitoring
+- 🚀 **Multi-GPU Acceleration**: Support for NVIDIA GPUs (NVENC), Apple Silicon (VideoToolbox), and CPU fallback
+- 🍎 **Apple Silicon Support**: Native acceleration for M1/M2/M3 chips using VideoToolbox
 - 💻 **Intelligent CPU Fallback**: Automatic fallback to CPU encoding when GPU is unavailable or fails
 - 🔒 **AES-128 Encryption**: Built-in encryption for secure video streaming
 - 📊 **Real-time Progress Tracking**: Live conversion progress monitoring with ETA
@@ -144,13 +145,19 @@ You can configure the package by editing the `config/hls.php` file. Below are th
 
 > 💡 Tip: If you are getting issues with "No key URI specified in key info file" please review this documentation https://github.com/protonemedia/laravel-ffmpeg?tab=readme-ov-file#encrypted-hls
 
-### Advanced GPU Acceleration Configuration
+### Advanced Multi-GPU Acceleration Configuration
 
-The package now includes comprehensive NVIDIA GPU acceleration with intelligent fallback and health monitoring. To enable GPU acceleration, you need:
+The package now includes comprehensive GPU acceleration support for multiple platforms with intelligent fallback and health monitoring. To enable GPU acceleration, you need:
 
+**For NVIDIA GPUs:**
 1. **NVIDIA GPU** with NVENC support (GTX 600 series or newer)
 2. **NVIDIA drivers** installed on your system
 3. **FFmpeg** compiled with NVENC support
+
+**For Apple Silicon:**
+1. **Apple M1/M2/M3 chip** (M1 Pro, M1 Max, M2 Pro, M2 Max, M3 Pro, M3 Max)
+2. **macOS 11.0+** (Big Sur or later)
+3. **FFmpeg** compiled with VideoToolbox support
 
 #### Enabling GPU Acceleration
 
@@ -169,17 +176,18 @@ The package now includes comprehensive NVIDIA GPU acceleration with intelligent 
 | Option | Description | Default | Valid Values |
 |--------|-------------|---------|--------------|
 | `use_gpu_acceleration` | Enable/disable GPU acceleration | `false` | `true`, `false` |
-| `gpu_device` | GPU device index or 'auto' | `auto` | `auto`, `0`, `1`, `2`, etc. |
-| `gpu_preset` | Quality/speed balance | `fast` | `fast`, `medium`, `slow`, `hq`, `ll`, `llhq`, `lossless`, `losslesshq` |
+| `gpu_device` | GPU device index or 'auto' (NVIDIA only) | `auto` | `auto`, `0`, `1`, `2`, etc. |
+| `gpu_preset` | Quality/speed balance (NVIDIA only) | `fast` | `fast`, `medium`, `slow`, `hq`, `ll`, `llhq`, `lossless`, `losslesshq` |
 | `gpu_profile` | H.264 profile for compatibility | `high` | `baseline`, `main`, `high` |
-| `gpu_min_memory_mb` | Minimum GPU memory required | `500` | Any positive integer |
-| `gpu_max_temp` | Maximum GPU temperature | `85` | Any positive integer |
+| `gpu_min_memory_mb` | Minimum GPU memory required (NVIDIA only) | `500` | Any positive integer |
+| `gpu_max_temp` | Maximum GPU temperature (NVIDIA only) | `85` | Any positive integer |
 
 #### Intelligent Fallback System
 
 The package now includes a sophisticated fallback system:
 
-- **Automatic Detection**: Checks for GPU availability, memory, and temperature
+- **Automatic Detection**: Checks for NVIDIA GPU, Apple Silicon, or CPU availability
+- **Priority-based Selection**: Apple Silicon > NVIDIA GPU > CPU (based on performance)
 - **Graceful Fallback**: Automatically switches to CPU encoding if GPU fails
 - **Performance Monitoring**: Logs GPU performance metrics for optimization
 - **Error Recovery**: Handles GPU failures gracefully without stopping the conversion
@@ -188,20 +196,33 @@ The package now includes a sophisticated fallback system:
 
 The package monitors several GPU health metrics:
 
+**For NVIDIA GPUs:**
 - **Memory Usage**: Ensures sufficient GPU memory is available
 - **Temperature**: Prevents overheating by monitoring GPU temperature
 - **Encoder Support**: Verifies NVENC encoder availability
+
+**For Apple Silicon:**
+- **Encoder Support**: Verifies VideoToolbox encoder availability
+- **System Integration**: Leverages native macOS video acceleration
+
+**For All Platforms:**
 - **Performance Tracking**: Logs conversion time and performance metrics
 
 #### Checking GPU Availability
 
 You can check if your system supports GPU acceleration by running:
 
+**For NVIDIA GPUs:**
 ```bash
 ffmpeg -hide_banner -encoders | grep h264_nvenc
 ```
 
-If this command returns output containing `h264_nvenc`, your system supports GPU acceleration.
+**For Apple Silicon:**
+```bash
+ffmpeg -hide_banner -encoders | grep h264_videotoolbox
+```
+
+If these commands return output containing the respective encoder, your system supports GPU acceleration.
 
 #### Advanced GPU Monitoring
 
@@ -210,25 +231,38 @@ The package automatically logs GPU performance metrics:
 ```php
 // GPU performance is automatically logged when GPU acceleration is used
 Log::info("GPU conversion completed in 45.23 seconds.");
+
+// For NVIDIA GPUs
 Log::warning("GPU memory usage: 2048MB / 8192MB (25.0%)");
 Log::warning("GPU temperature: 72°C (within limits)");
+
+// For Apple Silicon
+Log::info("🍎 Apple Silicon (VideoToolbox) detected!");
+Log::info("✅ Apple Silicon conversion completed successfully!");
 ```
 
 #### Troubleshooting GPU Issues
 
+**For NVIDIA GPUs:**
 - **"GPU acceleration is enabled but NVIDIA GPU with NVENC support is not available"**: Ensure you have NVIDIA drivers installed and FFmpeg compiled with NVENC support
 - **"GPU check failed: Insufficient free memory"**: Increase `gpu_min_memory_mb` or close other GPU-intensive applications
 - **"GPU check failed: Temperature too high"**: Increase `gpu_max_temp` or improve GPU cooling
 - **Poor performance**: Try different presets (`fast`, `medium`, `slow`) to find the best balance for your use case
+
+**For Apple Silicon:**
+- **"No compatible GPU found"**: Ensure you're running macOS 11.0+ and FFmpeg is compiled with VideoToolbox support
+- **"VideoToolbox encoder not available"**: Update FFmpeg to a version with VideoToolbox support
+
+**For All Platforms:**
 - **Compatibility issues**: Use `baseline` or `main` profile instead of `high` for broader device compatibility
 
 #### Cross-Platform Support
 
 The GPU acceleration works across different operating systems:
 
-- **Linux**: Full support with automatic binary detection
-- **Windows**: Support for Windows with proper path detection
-- **macOS**: Support for macOS systems
+- **Linux**: Full NVIDIA GPU support with automatic binary detection
+- **Windows**: NVIDIA GPU support with proper path detection
+- **macOS**: Full Apple Silicon support with VideoToolbox integration
 
 ### Model-Level Configuration
 
