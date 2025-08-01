@@ -250,7 +250,7 @@ final class ConvertToHLS
             '-c:v', 'h264_videotoolbox',
             '-c:a', 'aac',
             '-profile:v', 'main',
-            '-allow_sw', '1',  // Allow software fallback if needed
+            // '-allow_sw', '1',
             '-b:v', $bitrate.'k',
             '-maxrate', $bitrate.'k',
             '-bufsize', ($bitrate * 2).'k',
