@@ -32,6 +32,17 @@ return [
     'enable_encryption' => true,
 
     /**
+     * The encryption method to use for HLS encryption.
+     * Options: 'aes-128', 'none'
+     *
+     * Note: If you experience issues with encryption, you can set this to 'none'
+     * to disable encryption entirely.
+     *
+     * Default: 'aes-128'
+     */
+    'encryption_method' => 'aes-128',
+
+    /**
      * The bitrates for different resolutions. (In kbps)
      * This should be an associative array where the keys are
      * resolution strings in the format '{resolution}'
@@ -213,5 +224,14 @@ return [
      * Default: 'high'
      */
     'gpu_profile' => 'high',
+
+    /**
+     * This determines whether to enable debug logging for HLS conversion.
+     * When enabled, detailed logs will be output during the conversion process.
+     * This can be useful for troubleshooting but may impact performance.
+     *
+     * Default: false
+     */
+    'debug' => false,
 
 ];

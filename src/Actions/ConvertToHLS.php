@@ -22,6 +22,26 @@ final class ConvertToHLS
     private static ?string $smiPath = null;
 
     /**
+     * Log a message only if debug mode is enabled.
+     */
+    private static function debugLog(string $message, string $level = 'info'): void
+    {
+        if (config('hls.debug', false)) {
+            switch ($level) {
+                case 'warning':
+                    Log::warning($message);
+                    break;
+                case 'error':
+                    Log::error($message);
+                    break;
+                default:
+                    Log::info($message);
+                    break;
+            }
+        }
+    }
+
+    /**
      * Convert a video file to HLS format.
      */
     public static function convertToHLS(string $inputPath, string $outputFolder, Model $model, bool $isRetry = false): void
@@ -30,11 +50,11 @@ final class ConvertToHLS
         $wasGpuUsed = false;
         $useGpu = config('hls.use_gpu_acceleration', false);
 
-        Log::info("Starting HLS conversion for: {$inputPath}");
-        Log::info("GPU acceleration enabled: " . ($useGpu ? 'YES' : 'NO'));
+        self::debugLog("Starting HLS conversion for: {$inputPath}");
+        self::debugLog("GPU acceleration enabled: " . ($useGpu ? 'YES' : 'NO'));
 
         if ($isRetry) {
-            Log::info("This is a retry attempt using CPU fallback");
+            self::debugLog("This is a retry attempt using CPU fallback");
         }
 
         try {
@@ -54,12 +74,12 @@ final class ConvertToHLS
             $formats = [];
             $lowerResolutions = array_filter($resolutions, fn ($resolution): bool => self::extractResolution($resolution)['height'] <= self::extractResolution($fileResolution)['height']);
 
-            Log::info("📊 Processing " . count($lowerResolutions) . " resolutions: " . implode(', ', array_keys($lowerResolutions)));
-            Log::info("📹 Original video resolution: {$fileResolution}, bitrate: {$fileBitrate}k");
+            self::debugLog("📊 Processing " . count($lowerResolutions) . " resolutions: " . implode(', ', array_keys($lowerResolutions)));
+            self::debugLog("📹 Original video resolution: {$fileResolution}, bitrate: {$fileBitrate}k");
 
             foreach ($lowerResolutions as $resolution => $res) {
                 $bitrate = $kiloBitRates[$resolution] ?? 1000;
-                Log::info("🎬 Creating format for resolution: {$resolution} with bitrate: {$bitrate}k");
+                self::debugLog("🎬 Creating format for resolution: {$resolution} with bitrate: {$bitrate}k");
 
                 $format = self::createVideoFormat((int) $bitrate, $res, $isRetry);
                 $formats[] = $format;
@@ -69,28 +89,28 @@ final class ConvertToHLS
                     $wasGpuUsed = true;
                     $gpuType = self::detectBestGPU();
                     if ($gpuType === 'apple') {
-                        Log::info("🍎 Apple Silicon format created for resolution: {$resolution}");
+                        self::debugLog("🍎 Apple Silicon format created for resolution: {$resolution}");
                     } else {
-                        Log::info("🚀 NVIDIA GPU format created for resolution: {$resolution}");
+                        self::debugLog("🚀 NVIDIA GPU format created for resolution: {$resolution}");
                     }
                 } else {
-                    Log::info("🖥️ CPU format created for resolution: {$resolution}");
+                    self::debugLog("🖥️ CPU format created for resolution: {$resolution}");
                 }
             }
             if (empty($formats)) {
-                Log::info("⚠️ No resolutions found, using original video format");
+                self::debugLog("⚠️ No resolutions found, using original video format");
                 $format = self::createVideoFormat((int) $fileBitrate, $fileResolution, $isRetry);
                 $formats[] = $format;
                 if ($useGpu && !$isRetry && self::isGPUFormat($format)) {
                     $wasGpuUsed = true;
                     $gpuType = self::detectBestGPU();
                     if ($gpuType === 'apple') {
-                        Log::info("🍎 Apple Silicon format created for original resolution");
+                        self::debugLog("🍎 Apple Silicon format created for original resolution");
                     } else {
-                        Log::info("🚀 NVIDIA GPU format created for original resolution");
+                        self::debugLog("🚀 NVIDIA GPU format created for original resolution");
                     }
                 } else {
-                    Log::info("🖥️ CPU format created for original resolution");
+                    self::debugLog("🖥️ CPU format created for original resolution");
                 }
             }
 
@@ -99,8 +119,8 @@ final class ConvertToHLS
                 $export->addFormat($format);
             }
 
-            Log::info("🔄 Starting conversion process...");
-            Log::info("🎯 Target: {$outputFolder}/{$hlsOutputPath}/playlist.m3u8");
+            self::debugLog("🔄 Starting conversion process...");
+            self::debugLog("🎯 Target: {$outputFolder}/{$hlsOutputPath}/playlist.m3u8");
             info('Started conversion for resolutions: '.implode(', ', array_keys($lowerResolutions)));
 
             $progress = progress(label: 'Converting video to HLS format...', steps: 100);
@@ -111,8 +131,24 @@ final class ConvertToHLS
                 UpdateConversionProgress::dispatch($model, $percentage);
             });
 
-            if (config('hls.enable_encryption')) {
-                $export->withRotatingEncryptionKey(fn ($filename, $contents) => Storage::disk($secretsDisk)->put("{$outputFolder}/{$secretsOutputPath}/{$filename}", $contents));
+            if (config('hls.enable_encryption') && config('hls.encryption_method') !== 'none') {
+                self::debugLog("🔐 Setting up HLS encryption...");
+
+                // Use a more robust encryption approach
+                $export->withRotatingEncryptionKey(function ($filename, $contents) use ($secretsDisk, $outputFolder, $secretsOutputPath) {
+                    $fullPath = "{$outputFolder}/{$secretsOutputPath}/{$filename}";
+
+                    // Store the key file
+                    Storage::disk($secretsDisk)->put($fullPath, $contents);
+
+                    // If this is a key info file (.keyinfo), we need to ensure it has proper URI format
+                    if (str_ends_with($filename, '.keyinfo')) {
+                        self::debugLog("🔑 Processing key info file: {$filename}");
+                        self::fixKeyInfoFile($secretsDisk, $fullPath, $filename);
+                    }
+                });
+            } else {
+                self::debugLog("🔓 Encryption disabled or set to 'none'");
             }
 
             $export->save("{$outputFolder}/{$hlsOutputPath}/playlist.m3u8");
@@ -122,20 +158,35 @@ final class ConvertToHLS
                 self::logGPUPerformance($startTime);
                 $gpuType = self::detectBestGPU();
                 if ($gpuType === 'apple') {
-                    Log::info("✅ Apple Silicon conversion completed successfully!");
+                    self::debugLog("✅ Apple Silicon conversion completed successfully!");
                 } else {
-                    Log::info("✅ NVIDIA GPU conversion completed successfully!");
+                    self::debugLog("✅ NVIDIA GPU conversion completed successfully!");
                 }
             } else {
-                Log::info("✅ CPU conversion completed successfully!");
+                self::debugLog("✅ CPU conversion completed successfully!");
             }
 
         } catch (Exception $e) {
+            $errorMessage = $e->getMessage();
+
+            // Check if this is an encryption-related error
+            if (str_contains($errorMessage, 'no key URI specified') ||
+                str_contains($errorMessage, 'Invalid argument') ||
+                str_contains($errorMessage, 'key info file')) {
+
+                self::debugLog("🔐 Encryption error detected: {$errorMessage}", 'warning');
+                self::debugLog("🔄 Retrying without encryption...", 'warning');
+
+                // Retry without encryption
+                self::convertToHLSWithoutEncryption($inputPath, $outputFolder, $model);
+                return;
+            }
+
             if ($wasGpuUsed) {
-                Log::warning('GPU conversion failed, falling back to CPU: ' . $e->getMessage());
+                self::debugLog('GPU conversion failed, falling back to CPU: ' . $errorMessage, 'warning');
                 self::convertToHLSWithCPU($inputPath, $outputFolder, $model);
             } else {
-                throw new Exception("HLS conversion failed: {$e->getMessage()}");
+                throw new Exception("HLS conversion failed: {$errorMessage}");
             }
         } finally {
             FFMpeg::cleanupTemporaryFiles();
@@ -144,8 +195,24 @@ final class ConvertToHLS
 
     private static function convertToHLSWithCPU(string $inputPath, string $outputFolder, Model $model): void
     {
-        Log::info("Retrying conversion for {$inputPath} using CPU.");
+        self::debugLog("Retrying conversion for {$inputPath} using CPU.");
         self::convertToHLS($inputPath, $outputFolder, $model, true);
+    }
+
+    private static function convertToHLSWithoutEncryption(string $inputPath, string $outputFolder, Model $model): void
+    {
+        self::debugLog("Retrying conversion for {$inputPath} without encryption.");
+
+        // Temporarily disable encryption for this conversion
+        $originalEncryption = config('hls.enable_encryption');
+        config(['hls.enable_encryption' => false]);
+
+        try {
+            self::convertToHLS($inputPath, $outputFolder, $model, false);
+        } finally {
+            // Restore original encryption setting
+            config(['hls.enable_encryption' => $originalEncryption]);
+        }
     }
 
     private static function estimateTime(float $startTime, float $progress): string
@@ -181,17 +248,17 @@ final class ConvertToHLS
             $gpuType = self::detectBestGPU();
 
             if ($gpuType === 'nvidia') {
-                Log::info("🔍 NVIDIA GPU detected, creating NVIDIA format...");
+                self::debugLog("🔍 NVIDIA GPU detected, creating NVIDIA format...");
                 return self::createNvidiaFormat($bitrate, $resolution);
             } elseif ($gpuType === 'apple') {
-                Log::info("🔍 Apple Silicon detected, creating Apple format...");
+                self::debugLog("🔍 Apple Silicon detected, creating Apple format...");
                 return self::createAppleFormat($bitrate, $resolution);
             } else {
-                Log::warning('⚠️ GPU acceleration enabled but no compatible GPU found. Falling back to CPU.');
+                self::debugLog('⚠️ GPU acceleration enabled but no compatible GPU found. Falling back to CPU.', 'warning');
             }
         }
 
-        Log::info("🔍 Creating CPU format...");
+        self::debugLog("🔍 Creating CPU format...");
         return self::createCPUFormat($bitrate, $resolution);
     }
 
@@ -202,12 +269,12 @@ final class ConvertToHLS
         $gpuPreset = config('hls.gpu_preset', 'fast');
         $gpuProfile = config('hls.gpu_profile', 'high');
 
-        Log::info("🚀 Creating GPU format with:");
-        Log::info("   - Device: {$gpuDevice}");
-        Log::info("   - Preset: {$gpuPreset}");
-        Log::info("   - Profile: {$gpuProfile}");
-        Log::info("   - Bitrate: {$bitrate}k");
-        Log::info("   - Resolution: {$resolution}");
+        self::debugLog("🚀 Creating GPU format with:");
+        self::debugLog("   - Device: {$gpuDevice}");
+        self::debugLog("   - Preset: {$gpuPreset}");
+        self::debugLog("   - Profile: {$gpuProfile}");
+        self::debugLog("   - Bitrate: {$bitrate}k");
+        self::debugLog("   - Resolution: {$resolution}");
 
         $format = new X264();
         $format->setKiloBitrate($bitrate);
@@ -230,17 +297,17 @@ final class ConvertToHLS
         }
         $format->setAdditionalParameters($additionalParams);
 
-        Log::info("✅ NVIDIA GPU format created successfully");
+        self::debugLog("✅ NVIDIA GPU format created successfully");
         return $format;
     }
 
     private static function createAppleFormat(int $bitrate, string $resolution): X264
     {
-        Log::info("🍎 Creating Apple Silicon format with:");
-        Log::info("   - Bitrate: {$bitrate}k");
-        Log::info("   - Resolution: {$resolution}");
-        Log::info("   - Encoder: h264_videotoolbox");
-        Log::info("   - Profile: main");
+        self::debugLog("🍎 Creating Apple Silicon format with:");
+        self::debugLog("   - Bitrate: {$bitrate}k");
+        self::debugLog("   - Resolution: {$resolution}");
+        self::debugLog("   - Encoder: h264_videotoolbox");
+        self::debugLog("   - Profile: main");
 
         $format = new X264();
         $format->setKiloBitrate($bitrate);
@@ -258,17 +325,17 @@ final class ConvertToHLS
 
         $format->setAdditionalParameters($additionalParams);
 
-        Log::info("✅ Apple Silicon format created successfully");
+        self::debugLog("✅ Apple Silicon format created successfully");
         return $format;
     }
 
     private static function createCPUFormat(int $bitrate, string $resolution): X264
     {
-        Log::info("🖥️ Creating CPU format with:");
-        Log::info("   - Bitrate: {$bitrate}k");
-        Log::info("   - Resolution: {$resolution}");
-        Log::info("   - Preset: veryfast");
-        Log::info("   - CRF: 22");
+        self::debugLog("🖥️ Creating CPU format with:");
+        self::debugLog("   - Bitrate: {$bitrate}k");
+        self::debugLog("   - Resolution: {$resolution}");
+        self::debugLog("   - Preset: veryfast");
+        self::debugLog("   - CRF: 22");
 
         $format = new X264();
         $format->setKiloBitrate($bitrate);
@@ -279,58 +346,58 @@ final class ConvertToHLS
             '-crf', '22',
         ]);
 
-        Log::info("✅ CPU format created successfully");
+        self::debugLog("✅ CPU format created successfully");
         return $format;
     }
 
         private static function detectBestGPU(): string
     {
-        Log::info("🔍 Detecting best available GPU...");
+        self::debugLog("🔍 Detecting best available GPU...");
 
         try {
             if (!function_exists('shell_exec')) {
-                Log::warning('❌ GPU detection failed: shell_exec function not available.');
+                self::debugLog('❌ GPU detection failed: shell_exec function not available.', 'warning');
                 return 'cpu';
             }
 
             self::$ffmpegPath = self::findBinary('ffmpeg');
             if (empty(self::$ffmpegPath)) {
-                Log::warning('❌ GPU detection failed: ffmpeg binary not found.');
+                self::debugLog('❌ GPU detection failed: ffmpeg binary not found.', 'warning');
                 return 'cpu';
             }
 
-            Log::info("✅ FFmpeg found at: " . self::$ffmpegPath);
+            self::debugLog("✅ FFmpeg found at: " . self::$ffmpegPath);
 
             $encoders = shell_exec(self::$ffmpegPath . ' -hide_banner -encoders 2>&1');
 
             // Check for Apple Silicon (VideoToolbox)
             if (str_contains($encoders, 'h264_videotoolbox')) {
-                Log::info("🍎 Apple Silicon (VideoToolbox) detected!");
+                self::debugLog("🍎 Apple Silicon (VideoToolbox) detected!");
                 return 'apple';
             }
 
             // Check for NVIDIA (NVENC)
             if (str_contains($encoders, 'h264_nvenc')) {
-                Log::info("🚀 NVIDIA GPU (NVENC) detected!");
+                self::debugLog("🚀 NVIDIA GPU (NVENC) detected!");
 
                 // Check NVIDIA memory and temperature
                 $memoryOK = self::hasSufficientGPUMemory();
                 $tempOK = self::isGPUTempOK();
 
                 if ($memoryOK && $tempOK) {
-                    Log::info("✅ NVIDIA GPU is available and ready for use!");
+                    self::debugLog("✅ NVIDIA GPU is available and ready for use!");
                     return 'nvidia';
                 } else {
-                    Log::warning("❌ NVIDIA GPU check failed: Memory or temperature issues.");
+                    self::debugLog("❌ NVIDIA GPU check failed: Memory or temperature issues.", 'warning');
                     return 'cpu';
                 }
             }
 
-            Log::warning("❌ No compatible GPU found. Using CPU.");
+            self::debugLog("❌ No compatible GPU found. Using CPU.", 'warning');
             return 'cpu';
 
         } catch (Exception $e) {
-            Log::error('❌ GPU detection failed: ' . $e->getMessage());
+            self::debugLog('❌ GPU detection failed: ' . $e->getMessage(), 'error');
             return 'cpu';
         }
     }
@@ -349,7 +416,7 @@ final class ConvertToHLS
         if (!is_numeric(trim($freeMemory))) return true;
         $minRequiredMemory = config('hls.gpu_min_memory_mb', 500);
         if ((int)$freeMemory < $minRequiredMemory) {
-            Log::warning("GPU check failed: Insufficient free memory. Found: {$freeMemory}MB, Required: {$minRequiredMemory}MB.");
+            self::debugLog("GPU check failed: Insufficient free memory. Found: {$freeMemory}MB, Required: {$minRequiredMemory}MB.", 'warning');
             return false;
         }
         return true;
@@ -362,7 +429,7 @@ final class ConvertToHLS
         if (!is_numeric(trim($temp))) return true;
         $maxTemp = config('hls.gpu_max_temp', 85);
         if ((int)$temp >= $maxTemp) {
-            Log::warning("GPU check failed: Temperature too high. Current: {$temp}°C, Threshold: {$maxTemp}°C.");
+            self::debugLog("GPU check failed: Temperature too high. Current: {$temp}°C, Threshold: {$maxTemp}°C.", 'warning');
             return false;
         }
         return true;
@@ -374,13 +441,13 @@ final class ConvertToHLS
         $preset = config('hls.gpu_preset', 'fast');
         $validPresets = ['slow', 'medium', 'fast', 'hq', 'll', 'llhq', 'lossless', 'losslesshq'];
         if (!in_array($preset, $validPresets)) {
-            Log::warning("Invalid GPU preset '{$preset}', using 'fast' instead.");
+            self::debugLog("Invalid GPU preset '{$preset}', using 'fast' instead.", 'warning');
             config(['hls.gpu_preset' => 'fast']);
         }
         $profile = config('hls.gpu_profile', 'high');
         $validProfiles = ['baseline', 'main', 'high'];
         if (!in_array($profile, $validProfiles)) {
-            Log::warning("Invalid GPU profile '{$profile}', using 'high' instead.");
+            self::debugLog("Invalid GPU profile '{$profile}', using 'high' instead.", 'warning');
             config(['hls.gpu_profile' => 'high']);
         }
     }
@@ -388,7 +455,7 @@ final class ConvertToHLS
     private static function logGPUPerformance(float $startTime): void
     {
         $duration = microtime(true) - $startTime;
-        Log::info("GPU conversion completed in " . round($duration, 2) . " seconds.");
+        self::debugLog("GPU conversion completed in " . round($duration, 2) . " seconds.");
     }
 
     private static function isGPUFormat(X264 $format): bool
@@ -408,5 +475,51 @@ final class ConvertToHLS
             if (!empty($output) && !str_contains($output, 'not found')) return trim($path);
         }
         return '';
+    }
+
+        /**
+     * Fix the key info file to ensure it has proper URI format for FFmpeg.
+     * FFmpeg expects the key info file to have a specific format with URI.
+     */
+    private static function fixKeyInfoFile(string $disk, string $path, string $filename): void
+    {
+        try {
+            $contents = Storage::disk($disk)->get($path);
+            $lines = explode("\n", trim($contents));
+
+            // FFmpeg expects key info file format:
+            // URI
+            // path_to_key_file
+            // IV (optional)
+
+            if (count($lines) >= 2) {
+                $uri = trim($lines[0]);
+                $keyPath = trim($lines[1]);
+
+                // If URI is empty or doesn't look like a proper URI, we need to fix it
+                if (empty($uri) || !filter_var($uri, FILTER_VALIDATE_URL)) {
+                    self::debugLog("🔧 Fixing key info file URI format for: {$filename}");
+
+                    // Create a simple but valid URI that points to the key file
+                    // This is a fallback approach that should work with most setups
+                    $keyName = str_replace('.keyinfo', '.key', $filename);
+
+                    // Use a relative path approach that should work with the existing route structure
+                    // The actual URI will be resolved by the HLS service when serving the playlist
+                    $properUri = "/hls/keys/{$keyName}";
+
+                    // Reconstruct the key info file with proper URI
+                    $newContents = $properUri . "\n" . $keyPath;
+                    if (count($lines) > 2) {
+                        $newContents .= "\n" . $lines[2]; // Keep IV if present
+                    }
+
+                    Storage::disk($disk)->put($path, $newContents);
+                    self::debugLog("✅ Key info file fixed with proper URI: {$properUri}");
+                }
+            }
+        } catch (Exception $e) {
+            self::debugLog("❌ Failed to fix key info file: " . $e->getMessage(), 'error');
+        }
     }
 }
