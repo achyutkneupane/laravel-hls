@@ -48,6 +48,7 @@ final class ConvertToHLS
     {
         $startTime = microtime(true);
         $wasGpuUsed = false;
+        $gpuType = null;  // ✅ Initialize to null
         $useGpu = config('hls.use_gpu_acceleration', false);
 
         self::debugLog("Starting HLS conversion for: {$inputPath}");
@@ -106,7 +107,9 @@ final class ConvertToHLS
                 $formats[] = $format;
                 if ($useGpu && !$isRetry && self::isGPUFormat($format)) {
                     $wasGpuUsed = true;
-                    $gpuType = self::detectBestGPU();
+                    if ($gpuType === null) {  // ✅ Only detect once
+                        $gpuType = self::detectBestGPU();
+                    }
                     if ($gpuType === 'apple') {
                         self::debugLog("🍎 Apple Silicon format created for original resolution");
                     } else {
