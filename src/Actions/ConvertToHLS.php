@@ -266,12 +266,13 @@ final class ConvertToHLS
         self::debugLog("   - Bitrate: {$bitrate}k");
         self::debugLog("   - Resolution: {$resolution}");
 
-        // ✅ Fix: Pass h264_nvenc as the video codec to avoid libx264 conflict
-        $format = new X264('aac', 'h264_nvenc');
+        // Use default X264 constructor but override with additional parameters
+        $format = new X264();
         $format->setKiloBitrate($bitrate);
         $format->setAudioKiloBitrate(128);
         $additionalParams = [
             '-vf', 'scale='.self::renameResolution($resolution),
+            '-c:v', 'h264_nvenc',  // Override the video codec
             '-preset', $gpuPreset,
             '-profile:v', $gpuProfile,
             '-rc', 'cbr',
@@ -299,11 +300,13 @@ final class ConvertToHLS
         self::debugLog("   - Quality: medium");
         self::debugLog("   - Realtime: true");
 
-        $format = new X264('aac', 'h264_videotoolbox');
+        // Use default X264 constructor (which sets libx264) but override with additional parameters
+        $format = new X264();
         $format->setKiloBitrate($bitrate);
         $format->setAudioKiloBitrate(128);
         $additionalParams = [
             '-vf', 'scale='.self::renameResolution($resolution),
+            '-c:v', 'h264_videotoolbox',  // Override the video codec
             '-profile:v', 'main',
             '-quality', 'medium',
             '-realtime', 'true',
