@@ -84,10 +84,12 @@ final class ConvertToHLS
                 $format = self::createVideoFormat((int) $bitrate, $res, $isRetry);
                 $formats[] = $format;
 
-                // ✅ FINAL POLISH: More accurate GPU usage tracking
+                // ✅ Store GPU type when first detected
                 if ($useGpu && !$isRetry && self::isGPUFormat($format)) {
                     $wasGpuUsed = true;
-                    $gpuType = self::detectBestGPU();
+                    if ($gpuType === null) {  // Only detect once
+                        $gpuType = self::detectBestGPU();
+                    }
                     if ($gpuType === 'apple') {
                         self::debugLog("🍎 Apple Silicon format created for resolution: {$resolution}");
                     } else {
@@ -97,6 +99,7 @@ final class ConvertToHLS
                     self::debugLog("🖥️ CPU format created for resolution: {$resolution}");
                 }
             }
+
             if (empty($formats)) {
                 self::debugLog("⚠️ No resolutions found, using original video format");
                 $format = self::createVideoFormat((int) $fileBitrate, $fileResolution, $isRetry);
@@ -143,7 +146,7 @@ final class ConvertToHLS
 
             if ($wasGpuUsed) {
                 self::logGPUPerformance($startTime);
-                $gpuType = self::detectBestGPU();
+                // ✅ Use stored GPU type instead of detecting again
                 if ($gpuType === 'apple') {
                     self::debugLog("✅ Apple Silicon conversion completed successfully!");
                 } else {
@@ -263,13 +266,12 @@ final class ConvertToHLS
         self::debugLog("   - Bitrate: {$bitrate}k");
         self::debugLog("   - Resolution: {$resolution}");
 
-        $format = new X264();
+        // ✅ Fix: Pass h264_nvenc as the video codec to avoid libx264 conflict
+        $format = new X264('aac', 'h264_nvenc');
         $format->setKiloBitrate($bitrate);
         $format->setAudioKiloBitrate(128);
         $additionalParams = [
             '-vf', 'scale='.self::renameResolution($resolution),
-            '-c:v', 'h264_nvenc',
-            '-c:a', 'aac',
             '-preset', $gpuPreset,
             '-profile:v', $gpuProfile,
             '-rc', 'cbr',
@@ -294,20 +296,21 @@ final class ConvertToHLS
         self::debugLog("   - Bitrate: {$bitrate}k");
         self::debugLog("   - Resolution: {$resolution}");
         self::debugLog("   - Encoder: h264_videotoolbox");
-        self::debugLog("   - Profile: main");
+        self::debugLog("   - Quality: medium");
+        self::debugLog("   - Realtime: true");
 
-        $format = new X264();
+        $format = new X264('aac', 'h264_videotoolbox');
         $format->setKiloBitrate($bitrate);
         $format->setAudioKiloBitrate(128);
         $additionalParams = [
             '-vf', 'scale='.self::renameResolution($resolution),
-            '-c:v', 'h264_videotoolbox',
-            '-c:a', 'aac',
             '-profile:v', 'main',
-            // '-allow_sw', '1',
+            '-quality', 'medium',
+            '-realtime', 'true',
             '-b:v', $bitrate.'k',
             '-maxrate', $bitrate.'k',
             '-bufsize', ($bitrate * 2).'k',
+            '-allow_sw', '1',
         ];
 
         $format->setAdditionalParameters($additionalParams);
@@ -330,7 +333,6 @@ final class ConvertToHLS
         $format->setAdditionalParameters([
             '-vf', 'scale='.self::renameResolution($resolution),
             '-preset', 'veryfast',
-            // '-crf', '22',
         ]);
 
         self::debugLog("✅ CPU format created successfully");
