@@ -343,7 +343,7 @@ final class ConvertToHLS
         $format->setAdditionalParameters([
             '-vf', 'scale='.self::renameResolution($resolution),
             '-preset', 'veryfast',
-            '-crf', '22',
+            // '-crf', '22',
         ]);
 
         self::debugLog("✅ CPU format created successfully");
