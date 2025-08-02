@@ -133,20 +133,7 @@ final class ConvertToHLS
 
             if (config('hls.enable_encryption') && config('hls.encryption_method') !== 'none') {
                 self::debugLog("🔐 Setting up HLS encryption...");
-
-                // Use a more robust encryption approach
-                $export->withRotatingEncryptionKey(function ($filename, $contents) use ($secretsDisk, $outputFolder, $secretsOutputPath) {
-                    $fullPath = "{$outputFolder}/{$secretsOutputPath}/{$filename}";
-
-                    // Store the key file
-                    Storage::disk($secretsDisk)->put($fullPath, $contents);
-
-                    // If this is a key info file (.keyinfo), we need to ensure it has proper URI format
-                    if (str_ends_with($filename, '.keyinfo')) {
-                        self::debugLog("🔑 Processing key info file: {$filename}");
-                        self::fixKeyInfoFile($secretsDisk, $fullPath, $filename);
-                    }
-                });
+                self::setupEncryption($export, $secretsDisk, $outputFolder, $secretsOutputPath);
             } else {
                 self::debugLog("🔓 Encryption disabled or set to 'none'");
             }
@@ -240,7 +227,7 @@ final class ConvertToHLS
         return "{$parts[0]}:{$parts[1]}";
     }
 
-        private static function createVideoFormat(int $bitrate, string $resolution, bool $isRetry): X264
+    private static function createVideoFormat(int $bitrate, string $resolution, bool $isRetry): X264
     {
         $useGpu = config('hls.use_gpu_acceleration', false);
 
@@ -350,7 +337,7 @@ final class ConvertToHLS
         return $format;
     }
 
-        private static function detectBestGPU(): string
+    private static function detectBestGPU(): string
     {
         self::debugLog("🔍 Detecting best available GPU...");
 
@@ -477,7 +464,7 @@ final class ConvertToHLS
         return '';
     }
 
-        /**
+    /**
      * Fix the key info file to ensure it has proper URI format for FFmpeg.
      * FFmpeg expects the key info file to have a specific format with URI.
      */
@@ -521,5 +508,97 @@ final class ConvertToHLS
         } catch (Exception $e) {
             self::debugLog("❌ Failed to fix key info file: " . $e->getMessage(), 'error');
         }
+    }
+
+    /**
+     * Setup encryption based on the configured method.
+     */
+    private static function setupEncryption($export, string $secretsDisk, string $outputFolder, string $secretsOutputPath): void
+    {
+        $encryptionMethod = config('hls.encryption_method', 'aes-128');
+
+        switch ($encryptionMethod) {
+            case 'aes-128':
+                self::setupStaticEncryption($export, $secretsDisk, $outputFolder, $secretsOutputPath);
+                break;
+            case 'rotating':
+                self::setupRotatingEncryption($export, $secretsDisk, $outputFolder, $secretsOutputPath);
+                break;
+            default:
+                self::debugLog("⚠️ Unknown encryption method: {$encryptionMethod}, using static encryption", 'warning');
+                self::setupStaticEncryption($export, $secretsDisk, $outputFolder, $secretsOutputPath);
+                break;
+        }
+    }
+
+    /**
+     * Setup static AES-128 encryption with a single key.
+     */
+    private static function setupStaticEncryption($export, string $secretsDisk, string $outputFolder, string $secretsOutputPath): void
+    {
+        self::debugLog("🔐 Setting up static AES-128 encryption...");
+
+        // Generate a single encryption key
+        $encryptionKey = \ProtoneMedia\LaravelFFMpeg\Exporters\HLSExporter::generateEncryptionKey();
+
+        // Generate a unique key filename to avoid conflicts between videos
+        $baseKeyFilename = config('hls.encryption_key_filename', 'secret.key');
+        $keyFilename = self::generateUniqueKeyFilename($baseKeyFilename, $outputFolder);
+
+        // Store the key
+        $keyPath = "{$outputFolder}/{$secretsOutputPath}/{$keyFilename}";
+        Storage::disk($secretsDisk)->put($keyPath, $encryptionKey);
+
+        self::debugLog("🔑 Static encryption key stored at: {$keyPath}");
+
+        // Apply encryption to the export
+        $export->withEncryptionKey($encryptionKey, $keyFilename);
+    }
+
+    /**
+     * Generate a unique key filename to avoid conflicts between videos.
+     */
+    private static function generateUniqueKeyFilename(string $baseFilename, string $outputFolder): string
+    {
+        // Extract the name and extension from the base filename
+        $pathInfo = pathinfo($baseFilename);
+        $name = $pathInfo['filename'];
+        $extension = isset($pathInfo['extension']) ? '.' . $pathInfo['extension'] : '';
+
+        // Create a unique filename using the output folder (which is unique per video)
+        // and a hash to ensure uniqueness
+        $uniqueId = substr(md5($outputFolder), 0, 8);
+        $uniqueFilename = "{$name}_{$uniqueId}{$extension}";
+
+        self::debugLog("🔑 Generated unique key filename: {$uniqueFilename} from base: {$baseFilename}");
+
+        return $uniqueFilename;
+    }
+
+    /**
+     * Setup rotating encryption with multiple keys.
+     */
+    private static function setupRotatingEncryption($export, string $secretsDisk, string $outputFolder, string $secretsOutputPath): void
+    {
+        self::debugLog("🔄 Setting up rotating encryption...");
+
+        $segmentsPerKey = config('hls.rotating_key_segments', 1);
+        self::debugLog("🔄 Rotating key every {$segmentsPerKey} segment(s)");
+
+        // Use rotating encryption with callback for key storage
+        $export->withRotatingEncryptionKey(function ($filename, $contents) use ($secretsDisk, $outputFolder, $secretsOutputPath) {
+            $fullPath = "{$outputFolder}/{$secretsOutputPath}/{$filename}";
+
+            // Store the key file
+            Storage::disk($secretsDisk)->put($fullPath, $contents);
+
+            // If this is a key info file (.keyinfo), we need to ensure it has proper URI format
+            if (str_ends_with($filename, '.keyinfo')) {
+                self::debugLog("🔑 Processing key info file: {$filename}");
+                self::fixKeyInfoFile($secretsDisk, $fullPath, $filename);
+            }
+        }, $segmentsPerKey);
+
+        self::debugLog("✅ Rotating encryption configured successfully");
     }
 }

@@ -119,6 +119,9 @@ You can configure the package by editing the `config/hls.php` file. Below are th
 | `middlewares`                           | Middleware applied to HLS playlist routes.                                                     | `array`  | `[]`                  |
 | `queue_name`                            | The name of the queue used for HLS conversion jobs.                                            | `string` | `default`             |
 | `enable_encryption`                     | Whether to enable AES-128 encryption for HLS segments.                                         | `bool`   | `true`                |
+| `encryption_method`                     | The encryption method to use: 'aes-128', 'rotating', or 'none'.                               | `string` | `aes-128`             |
+| `rotating_key_segments`                 | Number of segments per key when using rotating encryption.                                     | `int`    | `1`                   |
+| `encryption_key_filename`               | Filename for the encryption key when using static encryption.                                  | `string` | `secret.key`          |
 | `bitrates`                              | An array of bitrates for HLS conversion.                                                       | `array`  | *See config file*     |
 | `resolutions`                           | An array of resolutions for HLS conversion.                                                    | `array`  | *See config file*     |
 | `video_column`                          | The database column that stores the original video path.                                       | `string` | `video_path`          |
@@ -144,6 +147,53 @@ You can configure the package by editing the `config/hls.php` file. Below are th
 > 💡 Tip: All disk values must be valid disks defined in your `config/filesystems.php`.
 
 > 💡 Tip: If you are getting issues with "No key URI specified in key info file" please review this documentation https://github.com/protonemedia/laravel-ffmpeg?tab=readme-ov-file#encrypted-hls
+
+### Encryption Options
+
+The package supports multiple encryption methods for HLS segments to ensure content security:
+
+#### Encryption Methods
+
+1. **Static AES-128 Encryption** (`aes-128`):
+   - Uses a single key for all segments
+   - Faster processing and simpler key management
+   - Suitable for most use cases
+
+2. **Rotating Encryption** (`rotating`):
+   - Uses different keys for different segments
+   - Enhanced security through key rotation
+   - Configurable segments per key (default: 1)
+   - More secure but requires more key management
+
+3. **No Encryption** (`none`):
+   - Disables encryption entirely
+   - Useful for debugging or when encryption is not required
+
+#### Encryption Configuration
+
+```php
+// In config/hls.php
+'enable_encryption' => true,
+'encryption_method' => 'aes-128',        // 'aes-128', 'rotating', or 'none'
+'rotating_key_segments' => 1,            // Number of segments per key (rotating only)
+'encryption_key_filename' => 'secret.key', // Key filename (static only)
+```
+
+#### Encryption Configuration Options
+
+| Option | Description | Default | Valid Values |
+|--------|-------------|---------|--------------|
+| `enable_encryption` | Enable/disable encryption globally | `true` | `true`, `false` |
+| `encryption_method` | Type of encryption to use | `aes-128` | `aes-128`, `rotating`, `none` |
+| `rotating_key_segments` | Segments per key (rotating only) | `1` | Any positive integer |
+| `encryption_key_filename` | Key filename (static only) | `secret.key` | Any valid filename |
+
+#### Security Considerations
+
+- **Static Encryption**: Good balance of security and performance
+- **Rotating Encryption**: Maximum security, but requires more storage for keys
+- **Key Storage**: Keys are stored securely on the configured `secrets_disk`
+- **Key Access**: Keys are served through signed URLs for security
 
 ### Advanced Multi-GPU Acceleration Configuration
 

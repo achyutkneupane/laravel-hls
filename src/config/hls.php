@@ -33,7 +33,11 @@ return [
 
     /**
      * The encryption method to use for HLS encryption.
-     * Options: 'aes-128', 'none'
+     * Options: 'aes-128', 'rotating', 'none'
+     *
+     * - 'aes-128': Uses a single static key for all segments
+     * - 'rotating': Uses different keys for different segments (more secure)
+     * - 'none': Disables encryption entirely
      *
      * Note: If you experience issues with encryption, you can set this to 'none'
      * to disable encryption entirely.
@@ -41,6 +45,22 @@ return [
      * Default: 'aes-128'
      */
     'encryption_method' => 'aes-128',
+
+    /**
+     * The number of segments that use the same key when using rotating encryption.
+     * This only applies when 'encryption_method' is set to 'rotating'.
+     *
+     * Default: 1
+     */
+    'rotating_key_segments' => 1,
+
+    /**
+     * The filename for the encryption key when using static encryption.
+     * This only applies when 'encryption_method' is set to 'aes-128'.
+     *
+     * Default: 'secret.key'
+     */
+    'encryption_key_filename' => 'secret.key',
 
     /**
      * The bitrates for different resolutions. (In kbps)
