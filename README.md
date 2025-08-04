@@ -25,6 +25,7 @@ application into HLS streams, which can be used for adaptive bitrate streaming.
 - 🔍 **Comprehensive Monitoring**: GPU performance, memory, and temperature monitoring
 - 🛡️ **Robust Error Handling**: Graceful error handling with detailed logging
 - 🌐 **Cross-platform Support**: Works on Linux, macOS, and Windows
+- 📡 **Event System**: Listen to conversion events for custom post-processing
 
 ## Installation
 
@@ -296,6 +297,165 @@ Log::info("✅ Apple Silicon conversion completed successfully!");
 **For NVIDIA GPUs:**
 - **"GPU acceleration is enabled but NVIDIA GPU with NVENC support is not available"**: Ensure you have NVIDIA drivers installed and FFmpeg compiled with NVENC support
 - **"GPU check failed: Insufficient free memory"**: Increase `gpu_min_memory_mb` or close other GPU-intensive applications
+
+## Event System
+
+The package provides a comprehensive event system that allows you to listen to HLS conversion events and perform custom actions after conversion completes or fails.
+
+### Available Events
+
+#### `HLSConversionCompleted`
+Fired when HLS conversion completes successfully.
+
+**Event Properties:**
+- `inputPath`: Path to the input video file
+- `outputFolder`: Output folder for HLS files
+- `model`: The Eloquent model instance
+- `wasGpuUsed`: Whether GPU acceleration was used
+- `gpuType`: Type of GPU used (apple, nvidia, or null)
+- `conversionTime`: Conversion time in seconds
+- `videoInfo`: Array containing video analysis information
+- `wasRetry`: Whether this was a retry attempt
+
+**Helper Methods:**
+- `getPlaylistPath()`: Returns the full path to the generated playlist
+- `getOutputDirectory()`: Returns the output directory path
+- `wasGpuUsed()`: Returns whether GPU was used
+- `getGpuType()`: Returns the GPU type used
+- `getConversionTime()`: Returns conversion time in seconds
+- `getFormattedConversionTime()`: Returns formatted conversion time (HH:MM:SS)
+
+#### `HLSConversionFailed`
+Fired when HLS conversion fails.
+
+**Event Properties:**
+- `inputPath`: Path to the input video file
+- `outputFolder`: Output folder for HLS files
+- `model`: The Eloquent model instance
+- `errorMessage`: The error message
+- `wasGpuUsed`: Whether GPU acceleration was used
+- `gpuType`: Type of GPU used (apple, nvidia, or null)
+- `conversionTime`: Conversion time in seconds
+- `videoInfo`: Array containing video analysis information
+- `wasRetry`: Whether this was a retry attempt
+
+**Helper Methods:**
+- `getErrorMessage()`: Returns the error message
+- `wasGpuUsed()`: Returns whether GPU was used
+- `getGpuType()`: Returns the GPU type used
+- `getConversionTime()`: Returns conversion time in seconds
+- `getFormattedConversionTime()`: Returns formatted conversion time (HH:MM:SS)
+
+### Creating Event Listeners
+
+Create a listener to handle conversion events:
+
+```php
+<?php
+
+namespace App\Listeners;
+
+use AchyutN\LaravelHLS\Events\HLSConversionCompleted;
+use AchyutN\LaravelHLS\Events\HLSConversionFailed;
+use Illuminate\Support\Facades\Log;
+
+class HLSConversionListener
+{
+    public function handleCompleted(HLSConversionCompleted $event): void
+    {
+        Log::info('HLS conversion completed!', [
+            'playlist_path' => $event->getPlaylistPath(),
+            'conversion_time' => $event->getFormattedConversionTime(),
+            'gpu_used' => $event->wasGpuUsed(),
+        ]);
+
+        // Update model with conversion results
+        $event->model->update([
+            'hls_playlist_path' => $event->getPlaylistPath(),
+            'hls_conversion_time' => $event->getConversionTime(),
+            'hls_was_gpu_used' => $event->wasGpuUsed(),
+            'hls_gpu_type' => $event->getGpuType(),
+            'hls_conversion_status' => 'completed',
+        ]);
+
+        // Send notification to user
+        // $event->model->user->notify(new HLSConversionCompletedNotification($event));
+
+        // Generate thumbnail
+        // $this->generateThumbnail($event->getPlaylistPath());
+
+        // Update CDN cache
+        // $this->updateCDNCache($event->getOutputDirectory());
+    }
+
+    public function handleFailed(HLSConversionFailed $event): void
+    {
+        Log::error('HLS conversion failed!', [
+            'error_message' => $event->getErrorMessage(),
+            'conversion_time' => $event->getFormattedConversionTime(),
+        ]);
+
+        // Update model with failure status
+        $event->model->update([
+            'hls_conversion_status' => 'failed',
+            'hls_error_message' => $event->getErrorMessage(),
+            'hls_conversion_time' => $event->getConversionTime(),
+        ]);
+
+        // Send failure notification
+        // $event->model->user->notify(new HLSConversionFailedNotification($event));
+
+        // Clean up partial files
+        // $this->cleanupPartialFiles($event->outputFolder);
+    }
+}
+```
+
+### Registering Event Listeners
+
+Register your listeners in your `EventServiceProvider`:
+
+```php
+<?php
+
+namespace App\Providers;
+
+use AchyutN\LaravelHLS\Events\HLSConversionCompleted;
+use AchyutN\LaravelHLS\Events\HLSConversionFailed;
+use App\Listeners\HLSConversionListener;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+
+class EventServiceProvider extends ServiceProvider
+{
+    protected $listen = [
+        HLSConversionCompleted::class => [
+            HLSConversionListener::class . '@handleCompleted',
+        ],
+        HLSConversionFailed::class => [
+            HLSConversionListener::class . '@handleFailed',
+        ],
+    ];
+}
+```
+
+### Example Use Cases
+
+**Post-Conversion Actions:**
+- Update database with conversion results
+- Send notifications to users
+- Generate thumbnails from video segments
+- Update CDN cache
+- Trigger webhooks
+- Clean up temporary files
+- Generate analytics reports
+
+**Error Handling:**
+- Log detailed error information
+- Send failure notifications
+- Clean up partial files
+- Retry with different settings
+- Alert administrators
+- Update model status
 - **"GPU check failed: Temperature too high"**: Increase `gpu_max_temp` or improve GPU cooling
 - **Poor performance**: Try different presets (`fast`, `medium`, `slow`) to find the best balance for your use case
 
