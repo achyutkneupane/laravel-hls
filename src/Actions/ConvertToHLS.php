@@ -57,6 +57,7 @@ final class ConvertToHLS
                     '-vf', 'scale='.self::renameResolution($res),
                     '-tune', 'zerolatency',
                     '-preset', 'veryfast',
+                    '-movflags', '+faststart',
                     '-crf', '22',
                 ]);
         }
@@ -69,6 +70,7 @@ final class ConvertToHLS
                     '-vf', 'scale='.self::renameResolution($fileResolution),
                     '-tune', 'zerolatency',
                     '-preset', 'veryfast',
+                    '-movflags', '+faststart',
                     '-crf', '22',
                 ]);
         }
