@@ -80,7 +80,7 @@ abstract class TestCase extends Orchestra
     {
         $filename = $filename ?? Str::uuid() . '.mp4';
 
-        $this->fakeDisk($disk)->put($filename, file_get_contents(__DIR__.'/videos/video.mp4'));
+        $this->fakeDisk($disk)->put($filename, file_get_contents(__DIR__ . '/videos/video.mp4'));
     }
 
     protected function getFakeVideoFilePath(string $filename = 'video.mp4', string $disk = 'local', bool $fullPath = false): string
@@ -99,9 +99,10 @@ abstract class TestCase extends Orchestra
     {
         $this->fakeVideoFile($filename, $disk);
 
-        return new Video([
-            config('hls.video_column') => $this->getFakeVideoFilePath($filename, $disk),
-            config('hls.progress_column') => 0,
-        ]);
+        return Video::query()
+            ->create([
+                config('hls.video_column') => $this->getFakeVideoFilePath($filename, $disk),
+                config('hls.progress_column') => 0,
+            ]);
     }
 }

@@ -21,3 +21,13 @@ it('verifies video file is valid', function () {
         "Video file {$this->filename} on disk {$this->disk} is not valid or has zero duration."
     );
 });
+
+it("can push job when video is saved", function () {
+    Queue::fake();
+
+    /** @var Video $videoModel */
+    $videoModel = $this->fakeVideoModelObject($this->filename, $this->disk);
+    $videoModel->save();
+
+    Queue::assertPushedOn(config('hls.queue_name'), \AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class);
+});
