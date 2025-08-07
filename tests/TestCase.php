@@ -10,15 +10,25 @@ use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Orchestra\Testbench\Concerns\WithWorkbench;
 use Orchestra\Testbench\TestCase as Orchestra;
+use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
+use ProtoneMedia\LaravelFFMpeg\Support\ServiceProvider;
 
 abstract class TestCase extends Orchestra
 {
     use LazilyRefreshDatabase;
     use WithWorkbench;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        FFMpeg::cleanupTemporaryFiles();
+    }
+
     final public function getPackageProviders($app): array
     {
         $providers = [
+            ServiceProvider::class,
             HLSProvider::class,
         ];
 
@@ -43,7 +53,7 @@ abstract class TestCase extends Orchestra
     protected function fakeDisk($diskName = 'local'): \Illuminate\Contracts\Filesystem\Filesystem
     {
         config()->set("filesystems.disks.{$diskName}", [
-            'driver' => 'local',
+            'driver' => 'memory',
             'root' => sys_get_temp_dir(),
         ]);
 
@@ -54,7 +64,7 @@ abstract class TestCase extends Orchestra
 
     protected function fakeVideoFile(string $filename = 'video.mp4', string $disk = 'local'): void
     {
-        $this->fakeDisk($disk)->put($filename, file_get_contents(__DIR__.'/src/videos/video.mp4'));
+        $this->fakeDisk($disk)->put($filename, file_get_contents(__DIR__.'/videos/video.mp4'));
     }
 
     protected function getFakeVideoFilePath(string $filename = 'video.mp4', string $disk = 'local'): string
