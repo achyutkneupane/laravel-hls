@@ -18,7 +18,8 @@ jobs:
             fail-fast: true
             matrix:
                 os: [ ubuntu-latest ]
-                php: [ 8.2, 8.3, 8.4 ]
+                php: [ 8.3 ]
+                ffmpeg: [ 6.1, 5.0 ]
         steps:
             -   name: Checkout Latest Codebase
                 uses: actions/checkout@v4
@@ -39,6 +40,12 @@ jobs:
                     tools: composer:v2
                     coverage: xdebug
                     extensions: fileinfo, mbstring, intl
+
+            -   name: Install FFmpeg
+                uses: Iamshankhadeep/setup-ffmpeg@ffmpeg-5.0-20220119
+                with:
+                    version: ${{ matrix.ffmpeg }}
+                id: setup-ffmpeg
 
             -   name: Install dependencies
                 run: |
