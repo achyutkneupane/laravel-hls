@@ -31,3 +31,15 @@ it('can push job when video is saved', function () {
 
     Queue::assertPushedOn(config('hls.queue_name'), AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class);
 });
+
+it("does not dispatch job if video_path is empty", function () {
+    Queue::fake();
+
+    $video = \AchyutN\LaravelHLS\Tests\Models\Video::query()
+        ->create([
+            config('hls.video_column') => '',
+            config('hls.progress_column') => 0,
+        ]);
+
+    Queue::assertNotPushed(\AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class);
+});
