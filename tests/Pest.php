@@ -13,7 +13,7 @@ declare(strict_types=1);
 |
 */
 
-pest()->extend(AchyutN\LaravelHLS\Tests\TestCase::class)->in('Feature');
+pest()->extend(AchyutN\LaravelHLS\Tests\TestCase::class)->in('Feature', 'Unit');
 
 /*
 |--------------------------------------------------------------------------
