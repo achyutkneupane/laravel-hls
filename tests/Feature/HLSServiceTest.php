@@ -22,7 +22,7 @@ beforeEach(function () {
 
 it('returns HLS key content if file exists', function () {
     $keyPath = "{$this->video->getHlsPath()}/{$this->video->getHLSSecretsOutputPath()}/sample.key";
-    Storage::disk($this->video->getSecretsDisk())->put($keyPath, 'keydata');
+    $this->fakeDisk($this->video->getSecretsDisk())->put($keyPath, 'keydata');
 
     $response = $this->service->getKey('video', $this->video->id, 'sample.key');
 
@@ -32,7 +32,7 @@ it('returns HLS key content if file exists', function () {
 
 it('returns playlist object with resolvers', function () {
     $playlistPath = "{$this->video->getHlsPath()}/{$this->video->getHLSOutputPath()}/playlist.m3u8";
-    Storage::disk($this->video->getHlsDisk())->put($playlistPath, "#EXTM3U");
+    $this->fakeDisk($this->video->getHlsDisk())->put($playlistPath, "#EXTM3U");
     $playlist = $this->service->getPlaylist('video', $this->video->id);
 
     expect($playlist)->toBeInstanceOf(\ProtoneMedia\LaravelFFMpeg\Http\DynamicHLSPlaylist::class);
@@ -40,7 +40,7 @@ it('returns playlist object with resolvers', function () {
 
 it('serves HLS segment file with stream or redirect', function () {
     $segmentPath = "{$this->video->getHlsPath()}/{$this->video->getHLSOutputPath()}/segment.ts";
-    Storage::disk($this->video->getHlsDisk())->put($segmentPath, 'segmentdata');
+    $this->fakeDisk($this->video->getHlsDisk())->put($segmentPath, 'segmentdata');
 
     $response = $this->service->getSegment('video', $this->video->id, 'segment.ts');
 
