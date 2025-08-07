@@ -6,8 +6,10 @@ namespace AchyutN\LaravelHLS\Tests;
 
 use AchyutN\LaravelHLS\HLSProvider;
 use AchyutN\LaravelHLS\Tests\Models\Video;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Orchestra\Testbench\Concerns\WithWorkbench;
 use Orchestra\Testbench\TestCase as Orchestra;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
@@ -21,6 +23,8 @@ abstract class TestCase extends Orchestra
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->setUpDatabase();
 
         FFMpeg::cleanupTemporaryFiles();
     }
@@ -50,26 +54,45 @@ abstract class TestCase extends Orchestra
         config()->set('hls.video_column', 'video_path');
     }
 
-    protected function fakeDisk($diskName = 'local'): \Illuminate\Contracts\Filesystem\Filesystem
+    protected function setUpDatabase(): void
+    {
+        app('db')->connection()->getSchemaBuilder()->create('videos', function (Blueprint $blueprint) {
+            $blueprint->id();
+            $blueprint->string(config('hls.video_column'));
+            $blueprint->string(config('hls.hls_column'))->nullable();
+            $blueprint->integer(config('hls.progress_column'))->default(0);
+            $blueprint->timestamps();
+        });
+    }
+
+    protected function fakeDisk(string $diskName = 'local'): \Illuminate\Contracts\Filesystem\Filesystem
     {
         config()->set("filesystems.disks.{$diskName}", [
-            'driver' => 'memory',
+            'driver' => 'local',
             'root' => sys_get_temp_dir(),
+            'url' => '',
         ]);
-
-        Storage::fake($diskName);
 
         return Storage::disk($diskName);
     }
 
     protected function fakeVideoFile(string $filename = 'video.mp4', string $disk = 'local'): void
     {
+        $filename = $filename ?? Str::uuid() . '.mp4';
+
         $this->fakeDisk($disk)->put($filename, file_get_contents(__DIR__.'/videos/video.mp4'));
     }
 
-    protected function getFakeVideoFilePath(string $filename = 'video.mp4', string $disk = 'local'): string
+    protected function getFakeVideoFilePath(string $filename = 'video.mp4', string $disk = 'local', bool $fullPath = false): string
     {
-        return $this->fakeDisk($disk)->path($filename);
+        $path = $this->fakeDisk($disk)->url($filename);
+
+        return $fullPath ? $this->fakeDisk($disk)->path($filename) : $path;
+    }
+
+    protected function fakeFileExists(string $filename = 'video.mp4', string $disk = 'local'): bool
+    {
+        return $this->fakeDisk($disk)->exists($filename);
     }
 
     protected function fakeVideoModelObject(string $filename = 'video.mp4', string $disk = 'local'): Video
@@ -78,7 +101,6 @@ abstract class TestCase extends Orchestra
 
         return new Video([
             config('hls.video_column') => $this->getFakeVideoFilePath($filename, $disk),
-            config('hls.hls_column') => 'hls',
             config('hls.progress_column') => 0,
         ]);
     }

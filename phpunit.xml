@@ -17,5 +17,6 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="QUEUE_CONNECTION" value="database"/>
     </php>
 </phpunit>
