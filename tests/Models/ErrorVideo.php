@@ -12,5 +12,4 @@ final class ErrorVideo extends Model
     use ConvertsToHLS;
 
     protected $guarded = [];
-    public string $videoColumn = 'video_path_error';
 }
