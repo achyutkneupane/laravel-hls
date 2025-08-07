@@ -78,9 +78,9 @@ abstract class TestCase extends Orchestra
 
     protected function fakeVideoFile(string $filename = 'video.mp4', string $disk = 'local'): void
     {
-        $filename = $filename ?? Str::uuid() . '.mp4';
+        $filename = $filename ?? Str::uuid().'.mp4';
 
-        $this->fakeDisk($disk)->put($filename, file_get_contents(__DIR__ . '/videos/video.mp4'));
+        $this->fakeDisk($disk)->put($filename, file_get_contents(__DIR__.'/videos/video.mp4'));
     }
 
     protected function getFakeVideoFilePath(string $filename = 'video.mp4', string $disk = 'local', bool $fullPath = false): string

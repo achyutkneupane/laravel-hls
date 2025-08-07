@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use AchyutN\LaravelHLS\Tests\Models\Video;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 
@@ -22,12 +24,12 @@ it('verifies video file is valid', function () {
     );
 });
 
-it("can push job when video is saved", function () {
+it('can push job when video is saved', function () {
     Queue::fake();
 
     /** @var Video $videoModel */
     $videoModel = $this->fakeVideoModelObject($this->filename, $this->disk);
     $videoModel->save();
 
-    Queue::assertPushedOn(config('hls.queue_name'), \AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class);
+    Queue::assertPushedOn(config('hls.queue_name'), AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class);
 });
