@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AchyutN\LaravelHLS\Tests;
 
 use AchyutN\LaravelHLS\HLSProvider;
+use AchyutN\LaravelHLS\Tests\Models\ErrorVideo;
 use AchyutN\LaravelHLS\Tests\Models\Video;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -50,8 +51,7 @@ abstract class TestCase extends Orchestra
         ]);
         config()->set('database.default', 'the_test');
         config()->set('app.key', 'base64:Hupx3yAySikrM2/edkZQNQHslgDWYfiBfCuSThJ5SK8=');
-
-        config()->set('hls.video_column', 'video_path');
+        config()->set('laravel-ffmpeg.log_channel', false);
     }
 
     protected function setUpDatabase(): void
@@ -61,6 +61,14 @@ abstract class TestCase extends Orchestra
             $blueprint->string(config('hls.video_column'));
             $blueprint->string(config('hls.hls_column'))->nullable();
             $blueprint->integer(config('hls.progress_column'))->default(0);
+            $blueprint->timestamps();
+        });
+
+        app('db')->connection()->getSchemaBuilder()->create('error_videos', function (Blueprint $blueprint) {
+            $blueprint->id();
+            $blueprint->string(config('hls.video_column')."_error");
+            $blueprint->string(config('hls.hls_column')."_error")->nullable();
+            $blueprint->integer(config('hls.progress_column')."_error")->default(0);
             $blueprint->timestamps();
         });
     }
@@ -103,6 +111,17 @@ abstract class TestCase extends Orchestra
             ->create([
                 config('hls.video_column') => $this->getFakeVideoFilePath($filename, $disk),
                 config('hls.progress_column') => 0,
+            ]);
+    }
+
+    protected function fakeErrorVideoModelObject(string $filename = 'video.mp4', string $disk = 'local'): ErrorVideo
+    {
+        $this->fakeVideoFile($filename, $disk);
+
+        return ErrorVideo::query()
+            ->create([
+                config('hls.video_column').'_error' => $this->getFakeVideoFilePath($filename, $disk),
+                config('hls.progress_column').'_error' => 0,
             ]);
     }
 }

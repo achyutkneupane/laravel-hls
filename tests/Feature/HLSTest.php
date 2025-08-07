@@ -27,9 +27,7 @@ it('verifies video file is valid', function () {
 it('can push job when video is saved', function () {
     Queue::fake();
 
-    /** @var Video $videoModel */
-    $videoModel = $this->fakeVideoModelObject($this->filename, $this->disk);
-    $videoModel->save();
+    $this->fakeVideoModelObject($this->filename, $this->disk);
 
     Queue::assertPushedOn(config('hls.queue_name'), AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class);
 });

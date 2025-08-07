@@ -18,6 +18,8 @@ final class CheckForDatabaseColumns
         $hlsColumn = $model->getHlsColumn();
         $conversionProgressColumn = $model->getProgressColumn();
 
+        dump($model, $videoColumn, $hlsColumn, $conversionProgressColumn);
+
         $builder = $model->getConnection()->getSchemaBuilder();
 
         if (! $builder->hasColumn($model->getTable(), $videoColumn)) {
