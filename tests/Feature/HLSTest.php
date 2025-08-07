@@ -43,3 +43,17 @@ it("does not dispatch job if video_path is empty", function () {
 
     Queue::assertNotPushed(\AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class);
 });
+
+it("dispatches job when video_path is changed", function () {
+    Queue::fake();
+
+    $video = $this->fakeVideoModelObject($this->filename, $this->disk);
+
+    $newPath = $this->getFakeVideoFilePath('another.mp4', $this->disk, true);
+    $this->fakeVideoFile('another.mp4', $this->disk);
+
+    $video->setVideoPath($newPath);
+    $video->save();
+
+    Queue::assertPushed(\AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class, 2);
+});
