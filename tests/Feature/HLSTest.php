@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use AchyutN\LaravelHLS\Actions\CheckForDatabaseColumns;
+use AchyutN\LaravelHLS\Jobs\QueueHLSConversion;
 use AchyutN\LaravelHLS\Tests\Models\Video;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 
@@ -29,7 +31,7 @@ it('can push job when video is saved', function () {
 
     $this->fakeVideoModelObject($this->filename, $this->disk);
 
-    Queue::assertPushedOn(config('hls.queue_name'), AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class);
+    Queue::assertPushedOn(config('hls.queue_name'), QueueHLSConversion::class);
 });
 
 it("does not dispatch job if video_path is empty", function () {
@@ -41,7 +43,7 @@ it("does not dispatch job if video_path is empty", function () {
             config('hls.progress_column') => 0,
         ]);
 
-    Queue::assertNotPushed(\AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class);
+    Queue::assertNotPushed(QueueHLSConversion::class);
 });
 
 it("dispatches job when video_path is changed", function () {
@@ -55,5 +57,17 @@ it("dispatches job when video_path is changed", function () {
     $video->setVideoPath($newPath);
     $video->save();
 
-    Queue::assertPushed(\AchyutN\LaravelHLS\Jobs\QueueHLSConversion::class, 2);
+    Queue::assertPushed(QueueHLSConversion::class, 2);
+});
+
+it("runs job with sync queue driver", function () {
+    Config::set('queue.default', 'sync');
+    Queue::fake();
+
+    $this->fakeVideoModelObject($this->filename, $this->disk);
+
+    Queue::assertPushedOn(config('hls.queue_name'), QueueHLSConversion::class);
+
+    $job = Queue::pushed(QueueHLSConversion::class)->first();
+    $job->handle();
 });
