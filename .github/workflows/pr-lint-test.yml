@@ -59,7 +59,7 @@ jobs:
 
             -   name: "Run Tests"
                 run: |
-                    ./vendor/bin/pest --verbose --colors=always --stop-on-failure --coverage --coverage-clover=coverage.xml --ci
+                    ./vendor/bin/pest --colors=always --stop-on-failure --coverage --coverage-clover=coverage.xml --ci
 
             -   name: "SonarQube Scan"
                 uses: SonarSource/sonarqube-scan-action@v4
