@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.13.2 - 2025-08-08
+
+### 🐛 Bug Fixes
+
+- fix: Segment response type fixed (#16) by @achyutkneupane
+
 ## v0.13.1 - 2025-08-03
 
 ### 🐛 Bug Fixes
