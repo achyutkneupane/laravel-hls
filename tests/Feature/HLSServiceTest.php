@@ -74,7 +74,9 @@ it('throws exception if modal alias is not defined', function () {
 it('redirects to temporary url for private S3 files', function () {
     $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
     $adapter = new class {
-        public function getTemporaryUrl() {}
+        public function getTemporaryUrl() {
+            // this method is mocked, so no implementation needed
+        }
     };
 
     $disk->shouldReceive('getAdapter')->andReturn($adapter);
@@ -93,7 +95,9 @@ it('redirects to temporary url for private S3 files', function () {
 it('redirects to public url for public S3 files', function () {
     $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
     $adapter = new class {
-        public function getTemporaryUrl() {}
+        public function getTemporaryUrl() {
+            // this method is mocked, so no implementation needed
+        }
     };
 
     $disk->shouldReceive('getAdapter')->andReturn($adapter);
