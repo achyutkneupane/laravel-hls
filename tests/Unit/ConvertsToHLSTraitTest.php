@@ -64,7 +64,7 @@ it("setProgress updates the progress", function () {
 it('returns the default temp storage output path from config', function () {
     unset($this->video->tempStorageOutputPath);
 
-    config()->set('hls.temp_storage_path', 'temp_default_path');
+    Config::set('hls.temp_storage_path', 'temp_default_path');
 
     $this->assertEquals(
         'temp_default_path',
@@ -74,7 +74,7 @@ it('returns the default temp storage output path from config', function () {
 });
 
 it('getVideoDisk returns default video disk from config', function () {
-    config()->set('hls.video_disk', 'test_video_disk');
+    Config::set('hls.video_disk', 'test_video_disk');
 
     $this->assertEquals(
         'test_video_disk',
@@ -84,7 +84,7 @@ it('getVideoDisk returns default video disk from config', function () {
 });
 
 it('getHlsDisk returns default HLS disk from config', function () {
-    config()->set('hls.hls_disk', 'test_hls_disk');
+    Config::set('hls.hls_disk', 'test_hls_disk');
 
     $this->assertEquals(
         'test_hls_disk',
@@ -94,7 +94,7 @@ it('getHlsDisk returns default HLS disk from config', function () {
 });
 
 it('getSecretsDisk returns default secrets disk from config', function () {
-    config()->set('hls.secrets_disk', 'test_secrets_disk');
+    Config::set('hls.secrets_disk', 'test_secrets_disk');
 
     $this->assertEquals(
         'test_secrets_disk',
@@ -104,7 +104,7 @@ it('getSecretsDisk returns default secrets disk from config', function () {
 });
 
 it('getHLSOutputPath returns default HLS output path from config', function () {
-    config()->set('hls.hls_output_path', 'hls_output_dir');
+    Config::set('hls.hls_output_path', 'hls_output_dir');
 
     $this->assertEquals(
         'hls_output_dir',
@@ -114,7 +114,7 @@ it('getHLSOutputPath returns default HLS output path from config', function () {
 });
 
 it('getHLSSecretsOutputPath returns default HLS secrets output path from config', function () {
-    config()->set('hls.secrets_output_path', 'hls_secrets_dir');
+    Config::set('hls.secrets_output_path', 'hls_secrets_dir');
 
     $this->assertEquals(
         'hls_secrets_dir',
@@ -122,4 +122,3 @@ it('getHLSSecretsOutputPath returns default HLS secrets output path from config'
         'Expected getHLSSecretsOutputPath() to return config-defined value.'
     );
 });
-

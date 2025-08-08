@@ -77,6 +77,19 @@ describe('exceptions', function () {
     })->throws(Exception::class, 'Invalid resolution format: 640-360. Expected format is \'{width}x{height}\'.');
 });
 
+it('confirms temporary directories', function () {
+    $original_path = $this->video144p->getVideoPath();
+    $folderName = uuid_create();
+
+    ConvertToHLS::convertToHLS($original_path, $folderName, $this->video144p);
+
+    expect(config('laravel-ffmpeg.temporary_files_encrypted_hls'))
+        ->toBe(config('hls.temp_hls_storage_path'));
+
+    expect(config('laravel-ffmpeg.temporary_files_root'))
+        ->toBe(config('hls.temp_storage_path'));
+});
+
 function performAssertions($hlsDisk, $playlistPath, $playlistAndSegmentDirectory, $secretsDisk, $keyDirectory): void
 {
     expect($hlsDisk->exists($playlistPath))->toBeTrue();

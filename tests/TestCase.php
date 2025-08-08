@@ -52,6 +52,8 @@ abstract class TestCase extends Orchestra
         config()->set('database.default', 'the_test');
         config()->set('app.key', 'base64:Hupx3yAySikrM2/edkZQNQHslgDWYfiBfCuSThJ5SK8=');
         config()->set('laravel-ffmpeg.log_channel', false);
+        config()->set('hls.temp_storage_path', sys_get_temp_dir());
+        config()->set('hls.temp_hls_storage_path', sys_get_temp_dir());
     }
 
     protected function setUpDatabase(): void
