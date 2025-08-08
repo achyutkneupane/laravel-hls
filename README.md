@@ -5,7 +5,8 @@
 ![Packagist Version](https://img.shields.io/packagist/v/achyutn/laravel-hls?label=Latest%20Version)
 ![Packagist Downloads](https://img.shields.io/packagist/dt/achyutn/laravel-hls?label=Packagist%20Downloads)
 ![Packagist Stars](https://img.shields.io/packagist/stars/achyutn/laravel-hls?label=Stars)
-[![Run Test for Pull Request](https://github.com/achyutkneupane/laravel-hls/actions/workflows/master.yml/badge.svg)](https://github.com/achyutkneupane/laravel-hls/actions/workflows/master.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=achyutkneupane_laravel-hls&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=achyutkneupane_laravel-hls)
+[![Lint & Test PR](https://github.com/achyutkneupane/laravel-hls/actions/workflows/pr-lint-test.yml/badge.svg)](https://github.com/achyutkneupane/laravel-hls/actions/workflows/pr-lint-test.yml)
 [![Bump version](https://github.com/achyutkneupane/laravel-hls/actions/workflows/tagrelease.yml/badge.svg)](https://github.com/achyutkneupane/laravel-hls/actions/workflows/tagrelease.yml)
 
 `laravel-hls` is a Laravel package for converting video files into adaptive HLS (HTTP Live Streaming) streams using

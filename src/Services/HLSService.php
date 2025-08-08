@@ -15,7 +15,7 @@ use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
-final class HLSService
+class HLSService
 {
     public function getKey(string $model, int|string $id, string $key): Response
     {

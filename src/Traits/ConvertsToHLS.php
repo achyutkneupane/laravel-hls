@@ -39,11 +39,6 @@ trait ConvertsToHLS
         $this->{$this->getHlsColumn()} = $path;
     }
 
-    public function setTempStoragePath(?string $path = null): void
-    {
-        $this->{$this->getTempStorageOutputPath()} = $path;
-    }
-
     public function getProgress(): int
     {
         return (int) ($this->{$this->getProgressColumn()} ?? 0);
