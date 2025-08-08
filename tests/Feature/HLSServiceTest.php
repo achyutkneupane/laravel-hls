@@ -72,27 +72,15 @@ it('throws exception if modal alias is not defined', function () {
 })->throws(NotFoundHttpException::class, 'Unknown model type [video]');
 
 it('redirects to temporary url for private S3 files', function () {
-    $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
-    $adapter = new class {
-        public function getTemporaryUrl() {
-            // this method is mocked, so no implementation needed
-        }
-    };
-
-    $disk->shouldReceive('getAdapter')->andReturn($adapter);
-    $disk->shouldReceive('getVisibility')->andReturn('private');
-    $disk->shouldReceive('temporaryUrl')->andReturn('https://temp-url.test');
-
-    $service = new \AchyutN\LaravelHLS\Services\HLSService();
-
-    $response = (new ReflectionClass($service))
-        ->getMethod('serveFileFromDisk')
-        ->invoke($service, $disk, 'path/to/file.ts');
-
-    expect($response->getTargetUrl())->toBe('https://temp-url.test');
+    s3filesAssertions('private', 'https://temp-url.test');
 });
 
 it('redirects to public url for public S3 files', function () {
+    s3filesAssertions('public', 'https://public-url.test');
+});
+
+function s3filesAssertions(string $visibility, string $url): void
+{
     $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
     $adapter = new class {
         public function getTemporaryUrl() {
@@ -101,8 +89,12 @@ it('redirects to public url for public S3 files', function () {
     };
 
     $disk->shouldReceive('getAdapter')->andReturn($adapter);
-    $disk->shouldReceive('getVisibility')->andReturn('public');
-    $disk->shouldReceive('url')->andReturn('https://public-url.test');
+    $disk->shouldReceive('getVisibility')->andReturn($visibility);
+    if ($visibility === 'private') {
+        $disk->shouldReceive('temporaryUrl')->andReturn($url);
+    } else {
+        $disk->shouldReceive('url')->andReturn($url);
+    }
 
     $service = new \AchyutN\LaravelHLS\Services\HLSService();
 
@@ -110,5 +102,5 @@ it('redirects to public url for public S3 files', function () {
         ->getMethod('serveFileFromDisk')
         ->invoke($service, $disk, 'path/to/file.ts');
 
-    expect($response->getTargetUrl())->toBe('https://public-url.test');
-});
+    expect($response->getTargetUrl())->toBe($url);
+}
