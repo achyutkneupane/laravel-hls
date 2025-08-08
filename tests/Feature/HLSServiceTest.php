@@ -70,3 +70,41 @@ it('throws exception if modal alias is not defined', function () {
 
     $this->service->getKey('video', $this->video->id, 'sample.key');
 })->throws(NotFoundHttpException::class, 'Unknown model type [video]');
+
+it('redirects to temporary url for private S3 files', function () {
+    $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
+    $adapter = new class {
+        public function getTemporaryUrl() {}
+    };
+
+    $disk->shouldReceive('getAdapter')->andReturn($adapter);
+    $disk->shouldReceive('getVisibility')->andReturn('private');
+    $disk->shouldReceive('temporaryUrl')->andReturn('https://temp-url.test');
+
+    $service = new \AchyutN\LaravelHLS\Services\HLSService();
+
+    $response = (new ReflectionClass($service))
+        ->getMethod('serveFileFromDisk')
+        ->invoke($service, $disk, 'path/to/file.ts');
+
+    expect($response->getTargetUrl())->toBe('https://temp-url.test');
+});
+
+it('redirects to public url for public S3 files', function () {
+    $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
+    $adapter = new class {
+        public function getTemporaryUrl() {}
+    };
+
+    $disk->shouldReceive('getAdapter')->andReturn($adapter);
+    $disk->shouldReceive('getVisibility')->andReturn('public');
+    $disk->shouldReceive('url')->andReturn('https://public-url.test');
+
+    $service = new \AchyutN\LaravelHLS\Services\HLSService();
+
+    $response = (new ReflectionClass($service))
+        ->getMethod('serveFileFromDisk')
+        ->invoke($service, $disk, 'path/to/file.ts');
+
+    expect($response->getTargetUrl())->toBe('https://public-url.test');
+});

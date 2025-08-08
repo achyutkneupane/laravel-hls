@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use AchyutN\LaravelHLS\Actions\ConvertToHLS;
+use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 
 beforeEach(function () {
     $this->disk = 'public';
@@ -77,6 +78,66 @@ describe('exceptions', function () {
 
         ConvertToHLS::convertToHLS($original_path, $folderName, $this->video144p);
     })->throws(Exception::class, 'Invalid resolution format: 640-360. Expected format is \'{width}x{height}\'.');
+
+
+
+    it('throws runtime exception when save fails during conversion', function () {
+        // Mock media object to return fake resolution and bitrate
+        $mediaMock = Mockery::mock();
+        $mediaMock->shouldReceive('getFormat->get')->andReturn(1000); // bitrate in bits
+        $streamMock = Mockery::mock();
+        $streamMock->shouldReceive('getDimensions->getWidth')->andReturn(1280);
+        $streamMock->shouldReceive('getDimensions->getHeight')->andReturn(720);
+        $mediaMock->shouldReceive('getVideoStream')->andReturn($streamMock);
+
+        // Mock export chain so save() throws
+        $exportMock = Mockery::mock();
+        $exportMock->shouldReceive('toDisk')->andReturnSelf();
+        $exportMock->shouldReceive('addFormat')->andReturnSelf();
+        $exportMock->shouldReceive('onProgress')->andReturnSelf();
+        $exportMock->shouldReceive('save')
+            ->andThrow(new \Exception('Simulated failure during save'));
+
+        // Mock FFMpeg::fromDisk()->open() calls
+        FFMpeg::shouldReceive('fromDisk')
+            ->with('video-disk')
+            ->andReturnSelf()
+            ->twice(); // one for probe, one for export
+
+        FFMpeg::shouldReceive('open')
+            ->andReturn($mediaMock, $exportMock); // first returns mediaMock, second returns exportMock
+
+        FFMpeg::shouldReceive('exportForHLS')->andReturn($exportMock);
+        FFMpeg::shouldReceive('cleanupTemporaryFiles')->andReturnNull();
+
+        // Fake model with required methods
+        $model = Mockery::mock(\Illuminate\Database\Eloquent\Model::class);
+        $model->shouldReceive('getVideoDisk')->andReturn('video-disk');
+        $model->shouldReceive('getHlsDisk')->andReturn('hls-disk');
+        $model->shouldReceive('getSecretsDisk')->andReturn('secrets-disk');
+        $model->shouldReceive('getHLSOutputPath')->andReturn('hls');
+        $model->shouldReceive('getHLSSecretsOutputPath')->andReturn('secrets');
+
+        config()->set('hls.resolutions', ['720p' => '1280x720']);
+        config()->set('hls.bitrates', ['720p' => 1500]);
+        config()->set('hls.enable_encryption', false);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Failed to prepare formats for HLS conversion');
+
+        ConvertToHLS::convertToHLS('input.mp4', 'output-folder', $model);
+    });
+
+    it('throws InvalidArgumentException on invalid resolution format in renameResolution', function () {
+        $method = new ReflectionMethod(\AchyutN\LaravelHLS\Actions\ConvertToHLS::class, 'renameResolution');
+
+        $invalidResolution = 'invalid_format';
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Invalid resolution format: {$invalidResolution}. Expected format is '{width}x{height}'.");
+
+        $method->invoke(null, $invalidResolution);
+    });
 });
 
 it('confirms temporary directories', function () {
