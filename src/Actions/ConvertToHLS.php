@@ -39,10 +39,15 @@ final class ConvertToHLS
         $hlsOutputPath = $model->getHLSOutputPath();
         $secretsOutputPath = $model->getHLSSecretsOutputPath();
 
-        $media = FFMpeg::fromDisk($videoDisk)->open($inputPath);
-        $fileBitrate = $media->getFormat()->get('bit_rate') / 1000;
-        $streamVideo = $media->getVideoStream()->getDimensions();
-        $fileResolution = "{$streamVideo->getWidth()}x{$streamVideo->getHeight()}";
+        try {
+            $media = FFMpeg::fromDisk($videoDisk)->open($inputPath);
+            $fileBitrate = $media->getFormat()->get('bit_rate') / 1000;
+            $streamVideo = $media->getVideoStream()->getDimensions();
+            $fileResolution = "{$streamVideo->getWidth()}x{$streamVideo->getHeight()}";
+        } catch (Exception $e) {
+            FFMpeg::cleanupTemporaryFiles();
+            throw new Exception("Failed to open or probe video file.");
+        }
 
         $formats = [];
 
