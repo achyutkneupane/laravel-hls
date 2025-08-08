@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use AchyutN\LaravelHLS\Tests\Models\Video;
 
 beforeEach(function () {
@@ -10,56 +12,55 @@ beforeEach(function () {
     $this->video = $this->fakeVideoModelObject($this->filename, $this->disk);
 });
 
-it("getVideoPath returns the correct path", function () {
+it('getVideoPath returns the correct path', function () {
     $videoPath = $this->video->getVideoPath();
 
     $this->assertEquals(
         $this->getFakeVideoFilePath($this->filename, $this->disk),
         $videoPath,
-        "getVideoPath did not return the expected path."
+        'getVideoPath did not return the expected path.'
     );
 });
 
-it("setVideoPath updates the video path", function () {
+it('setVideoPath updates the video path', function () {
     $newPath = 'new-video-file.mp4';
     $this->video->setVideoPath($newPath);
 
     $this->assertEquals(
         $newPath,
         $this->video->getVideoPath(),
-        "setVideoPath did not update the video path correctly."
+        'setVideoPath did not update the video path correctly.'
     );
 });
 
-it("setHlsPath updates the HLS path", function () {
+it('setHlsPath updates the HLS path', function () {
     $newHlsPath = 'new-hls-file.m3u8';
     $this->video->setHlsPath($newHlsPath);
 
     $this->assertEquals(
         $newHlsPath,
         $this->video->getHlsPath(),
-        "setHlsPath did not update the HLS path correctly."
+        'setHlsPath did not update the HLS path correctly.'
     );
 });
 
-it("getProgress returns the correct progress", function () {
+it('getProgress returns the correct progress', function () {
     $this->assertEquals(
         0,
         $this->video->getProgress(),
-        "getProgress did not return the expected progress value."
+        'getProgress did not return the expected progress value.'
     );
 });
 
-it("setProgress updates the progress", function () {
+it('setProgress updates the progress', function () {
     $this->video->setProgress(75);
 
     $this->assertEquals(
         75,
         $this->video->getProgress(),
-        "setProgress did not update the progress correctly."
+        'setProgress did not update the progress correctly.'
     );
 });
-
 
 it('returns the default temp storage output path from config', function () {
     unset($this->video->tempStorageOutputPath);

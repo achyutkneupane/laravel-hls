@@ -46,7 +46,7 @@ final class ConvertToHLS
             $fileResolution = "{$streamVideo->getWidth()}x{$streamVideo->getHeight()}";
         } catch (Exception $e) {
             FFMpeg::cleanupTemporaryFiles();
-            throw new Exception("Failed to open or probe video file.");
+            throw new Exception('Failed to open or probe video file.', $e->getCode(), $e);
         }
 
         $formats = [];

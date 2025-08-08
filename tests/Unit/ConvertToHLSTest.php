@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 use AchyutN\LaravelHLS\Actions\ConvertToHLS;
 
 beforeEach(function () {
     $this->disk = 'public';
 
-    $this->playlist = "playlist.m3u8";
+    $this->playlist = 'playlist.m3u8';
 
     $this->video720p = $this->fakeVideoModelObject('720p-video.mp4', $this->disk);
     $this->video144p = $this->fakeVideoModelObject('144p-video.mp4', $this->disk, 'video-144p.mp4');
@@ -61,11 +63,11 @@ describe('generates HLS playlist, segments and keys for a valid video model', fu
 });
 
 describe('exceptions', function () {
-    it("throws exception for invalid video", function () {
+    it('throws exception for invalid video', function () {
         ConvertToHLS::convertToHLS($this->invalidVideo->getVideoPath(), 'invalid-folder', $this->invalidVideo);
     })->throws(Exception::class, 'Failed to open or probe video file.');
 
-    it("throws exception for invalid format", function () {
+    it('throws exception for invalid format', function () {
         $original_path = $this->video144p->getVideoPath();
         $folderName = uuid_create();
 

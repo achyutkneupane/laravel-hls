@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final readonly class HLSController
 {
-    public function __construct(private HLSService $service) {}
+    public function __construct(private readonly HLSService $service) {}
 
     public function key(string $model, int|string $id, string $key): \Illuminate\Http\Response
     {

@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 use AchyutN\LaravelHLS\Services\HLSService;
 use AchyutN\LaravelHLS\Tests\Models\Video;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 beforeEach(function () {
@@ -37,10 +38,10 @@ it('throws 404 if HLS key file does not exist', function () {
 
 it('returns playlist object with resolvers', function () {
     $playlistPath = "{$this->video->getHlsPath()}/{$this->video->getHLSOutputPath()}/playlist.m3u8";
-    $this->fakeDisk($this->video->getHlsDisk())->put($playlistPath, "#EXTM3U");
+    $this->fakeDisk($this->video->getHlsDisk())->put($playlistPath, '#EXTM3U');
     $playlist = $this->service->getPlaylist('video', $this->video->id);
 
-    expect($playlist)->toBeInstanceOf(\ProtoneMedia\LaravelFFMpeg\Http\DynamicHLSPlaylist::class);
+    expect($playlist)->toBeInstanceOf(ProtoneMedia\LaravelFFMpeg\Http\DynamicHLSPlaylist::class);
 });
 
 it('throws 404 if HLS playlist file does not exist', function () {

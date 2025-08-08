@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use AchyutN\LaravelHLS\Actions\CheckForDatabaseColumns;
 use AchyutN\LaravelHLS\Jobs\QueueHLSConversion;
 use AchyutN\LaravelHLS\Tests\Models\Video;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
@@ -10,7 +9,7 @@ use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 beforeEach(function () {
     $this->disk = 'public';
     $this->filename = 'video-file.mp4';
-    $this->originalFile = "video-144p.mp4";
+    $this->originalFile = 'video-144p.mp4';
 });
 
 it('verifies video file is valid', function () {
@@ -35,10 +34,10 @@ it('can push job when video is saved', function () {
     Queue::assertPushedOn(config('hls.queue_name'), QueueHLSConversion::class);
 });
 
-it("does not dispatch job if video_path is empty", function () {
+it('does not dispatch job if video_path is empty', function () {
     Queue::fake();
 
-    $video = \AchyutN\LaravelHLS\Tests\Models\Video::query()
+    $video = Video::query()
         ->create([
             config('hls.video_column') => '',
             config('hls.progress_column') => 0,
@@ -47,7 +46,7 @@ it("does not dispatch job if video_path is empty", function () {
     Queue::assertNotPushed(QueueHLSConversion::class);
 });
 
-it("dispatches job when video_path is changed", function () {
+it('dispatches job when video_path is changed', function () {
     Queue::fake();
 
     $video = $this->fakeVideoModelObject($this->filename, $this->disk, $this->originalFile);
@@ -61,7 +60,7 @@ it("dispatches job when video_path is changed", function () {
     Queue::assertPushed(QueueHLSConversion::class, 2);
 });
 
-it("runs job with sync queue driver", function () {
+it('runs job with sync queue driver', function () {
     Config::set('queue.default', 'sync');
     Queue::fake();
 
@@ -73,7 +72,7 @@ it("runs job with sync queue driver", function () {
     $job->handle();
 });
 
-it("deletes file after conversion", function () {
+it('deletes file after conversion', function () {
     Config::set('queue.default', 'sync');
     Config::set('hls.delete_original_file_after_conversion', true);
     Queue::fake();
@@ -92,6 +91,6 @@ it("deletes file after conversion", function () {
 
     $this->assertTrue(
         $videoModel->getHlsPath() === null,
-        "HLS path was not set to null after deleting the original file."
+        'HLS path was not set to null after deleting the original file.'
     );
 });

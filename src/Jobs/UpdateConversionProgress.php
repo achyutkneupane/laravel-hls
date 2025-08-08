@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace AchyutN\LaravelHLS\Jobs;
 
-use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Queue\Queueable;
 

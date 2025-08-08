@@ -68,9 +68,9 @@ abstract class TestCase extends Orchestra
 
         app('db')->connection()->getSchemaBuilder()->create('error_videos', function (Blueprint $blueprint) {
             $blueprint->id();
-            $blueprint->string(config('hls.video_column')."_error");
-            $blueprint->string(config('hls.hls_column')."_error")->nullable();
-            $blueprint->integer(config('hls.progress_column')."_error")->default(0);
+            $blueprint->string(config('hls.video_column').'_error');
+            $blueprint->string(config('hls.hls_column').'_error')->nullable();
+            $blueprint->integer(config('hls.progress_column').'_error')->default(0);
             $blueprint->timestamps();
         });
     }

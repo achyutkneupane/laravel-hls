@@ -1,12 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 use AchyutN\LaravelHLS\Controllers\HLSController;
-use AchyutN\LaravelHLS\Jobs\QueueHLSConversion;
 use AchyutN\LaravelHLS\Services\HLSService;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
-use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 beforeEach(function () {
@@ -22,7 +22,7 @@ it('returns key when signature is valid', function () {
     $signedUrl = URL::signedRoute('hls.key', [
         'model' => 'video',
         'id' => 1,
-        'key' => 'enc.key'
+        'key' => 'enc.key',
     ]);
 
     $expectedResponse = new Response('key-data', 200);
@@ -41,7 +41,7 @@ it('returns 401 for key when signature is invalid', function () {
     $url = route('hls.key', [
         'model' => 'video',
         'id' => 1,
-        'key' => 'enc.key'
+        'key' => 'enc.key',
     ]);
 
     $this->get($url)->assertStatus(401);
@@ -52,7 +52,7 @@ it('returns 404 when playlist file does not exist', function () {
         ->shouldReceive('getPlaylist')
         ->once()
         ->with('video', 1, 'playlist.m3u8')
-        ->andThrow(new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException());
+        ->andThrow(new Symfony\Component\HttpKernel\Exception\NotFoundHttpException());
 
     $this->get(route('hls.playlist', [
         'model' => 'video',
@@ -64,7 +64,7 @@ it('returns segment when signature is valid', function () {
     $signedUrl = URL::signedRoute('hls.segment', [
         'model' => 'video',
         'id' => 1,
-        'filename' => 'file.ts'
+        'filename' => 'file.ts',
     ]);
 
     $expectedResponse = new StreamedResponse();

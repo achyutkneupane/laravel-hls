@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use AchyutN\LaravelHLS\Actions\CheckForDatabaseColumns;
 
 beforeEach(function () {
