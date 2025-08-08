@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\Storage;
+use AchyutN\LaravelHLS\Actions\ConvertToHLS;
 
 beforeEach(function () {
     $this->disk = 'public';
@@ -15,7 +15,7 @@ it('generates HLS playlist, segments and keys for a valid video model', function
     $original_path = $this->successVideo->getVideoPath();
     $folderName = uuid_create();
 
-    \AchyutN\LaravelHLS\Actions\ConvertToHLS::convertToHLS($original_path, $folderName, $this->successVideo);
+    ConvertToHLS::convertToHLS($original_path, $folderName, $this->successVideo);
 
     $hlsDiskName = $this->successVideo->getHlsDisk();
     $hlsDisk = $this->fakeDisk($hlsDiskName);
