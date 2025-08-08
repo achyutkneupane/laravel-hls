@@ -4,6 +4,7 @@ use AchyutN\LaravelHLS\Services\HLSService;
 use AchyutN\LaravelHLS\Tests\Models\Video;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 beforeEach(function () {
     $this->disk = 'public';
@@ -13,7 +14,7 @@ beforeEach(function () {
     $this->video->hls_path = 'hls/path';
     $this->video->save();
 
-    config()->set('hls.model_aliases', [
+    Config::set('hls.model_aliases', [
         'video' => Video::class,
     ]);
 
@@ -30,6 +31,10 @@ it('returns HLS key content if file exists', function () {
         ->and($response->getContent())->toBe('keydata');
 });
 
+it('throws 404 if HLS key file does not exist', function () {
+    $this->service->getKey('video', $this->video->id, 'nonexistent.key');
+})->throws(NotFoundHttpException::class);
+
 it('returns playlist object with resolvers', function () {
     $playlistPath = "{$this->video->getHlsPath()}/{$this->video->getHLSOutputPath()}/playlist.m3u8";
     $this->fakeDisk($this->video->getHlsDisk())->put($playlistPath, "#EXTM3U");
@@ -37,6 +42,10 @@ it('returns playlist object with resolvers', function () {
 
     expect($playlist)->toBeInstanceOf(\ProtoneMedia\LaravelFFMpeg\Http\DynamicHLSPlaylist::class);
 });
+
+it('throws 404 if HLS playlist file does not exist', function () {
+    $this->service->getPlaylist('video', $this->video->id, 'nonexistent.m3u8');
+})->throws(NotFoundHttpException::class);
 
 it('serves HLS segment file with stream or redirect', function () {
     $segmentPath = "{$this->video->getHlsPath()}/{$this->video->getHLSOutputPath()}/segment.ts";
@@ -47,3 +56,16 @@ it('serves HLS segment file with stream or redirect', function () {
     expect($response)
         ->toBeInstanceOf(Symfony\Component\HttpFoundation\StreamedResponse::class);
 });
+
+it('throws 404 if HLS segment file does not exist', function () {
+    $this->service->getSegment('video', $this->video->id, 'nonexistent.ts');
+})->throws(NotFoundHttpException::class);
+
+it('throws exception if modal alias is not defined', function () {
+    Config::set('hls.model_aliases', []);
+
+    $keyPath = "{$this->video->getHlsPath()}/{$this->video->getHLSSecretsOutputPath()}/sample.key";
+    $this->fakeDisk($this->video->getSecretsDisk())->put($keyPath, 'keydata');
+
+    $this->service->getKey('video', $this->video->id, 'sample.key');
+})->throws(NotFoundHttpException::class, 'Unknown model type [video]');
