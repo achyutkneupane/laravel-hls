@@ -84,11 +84,11 @@ abstract class TestCase extends Orchestra
         return Storage::disk($diskName);
     }
 
-    protected function fakeVideoFile(string $filename = 'video.mp4', string $disk = 'local'): void
+    protected function fakeVideoFile(string $filename = 'video.mp4', string $disk = 'local', string $file = 'video.mp4'): void
     {
         $filename = $filename ?? Str::uuid().'.mp4';
 
-        $this->fakeDisk($disk)->put($filename, file_get_contents(__DIR__.'/videos/video.mp4'));
+        $this->fakeDisk($disk)->put($filename, file_get_contents(__DIR__.'/videos/'.$file));
     }
 
     protected function getFakeVideoFilePath(string $filename = 'video.mp4', string $disk = 'local', bool $fullPath = false): string
@@ -103,9 +103,9 @@ abstract class TestCase extends Orchestra
         return $this->fakeDisk($disk)->exists($filename);
     }
 
-    protected function fakeVideoModelObject(string $filename = 'video.mp4', string $disk = 'local'): Video
+    protected function fakeVideoModelObject(string $filename = 'video.mp4', string $disk = 'local', string $file = 'video.mp4'): Video
     {
-        $this->fakeVideoFile($filename, $disk);
+        $this->fakeVideoFile($filename, $disk, $file);
 
         return Video::query()
             ->create([
@@ -114,9 +114,9 @@ abstract class TestCase extends Orchestra
             ]);
     }
 
-    protected function fakeErrorVideoModelObject(string $filename = 'video.mp4', string $disk = 'local'): ErrorVideo
+    protected function fakeErrorVideoModelObject(string $filename = 'video.mp4', string $disk = 'local', string $file = 'video.mp4'): ErrorVideo
     {
-        $this->fakeVideoFile($filename, $disk);
+        $this->fakeVideoFile($filename, $disk, $file);
 
         return ErrorVideo::query()
             ->create([
