@@ -10,11 +10,12 @@ use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 beforeEach(function () {
     $this->disk = 'public';
     $this->filename = 'video-file.mp4';
+    $this->originalFile = "video-144p.mp4";
 });
 
 it('verifies video file is valid', function () {
     /** @var Video $videoModel */
-    $this->fakeVideoModelObject($this->filename, $this->disk);
+    $this->fakeVideoModelObject($this->filename, $this->disk, $this->originalFile);
 
     $this->assertTrue(
         $this->fakeFileExists($this->filename, $this->disk),
@@ -29,7 +30,7 @@ it('verifies video file is valid', function () {
 it('can push job when video is saved', function () {
     Queue::fake();
 
-    $this->fakeVideoModelObject($this->filename, $this->disk);
+    $this->fakeVideoModelObject($this->filename, $this->disk, $this->originalFile);
 
     Queue::assertPushedOn(config('hls.queue_name'), QueueHLSConversion::class);
 });
@@ -49,7 +50,7 @@ it("does not dispatch job if video_path is empty", function () {
 it("dispatches job when video_path is changed", function () {
     Queue::fake();
 
-    $video = $this->fakeVideoModelObject($this->filename, $this->disk);
+    $video = $this->fakeVideoModelObject($this->filename, $this->disk, $this->originalFile);
 
     $newPath = $this->getFakeVideoFilePath('another.mp4', $this->disk, true);
     $this->fakeVideoFile('another.mp4', $this->disk);
@@ -64,10 +65,33 @@ it("runs job with sync queue driver", function () {
     Config::set('queue.default', 'sync');
     Queue::fake();
 
-    $this->fakeVideoModelObject($this->filename, $this->disk);
+    $this->fakeVideoModelObject($this->filename, $this->disk, $this->originalFile);
 
     Queue::assertPushedOn(config('hls.queue_name'), QueueHLSConversion::class);
 
     $job = Queue::pushed(QueueHLSConversion::class)->first();
     $job->handle();
+});
+
+it("deletes file after conversion", function () {
+    Config::set('queue.default', 'sync');
+    Config::set('hls.delete_original_file_after_conversion', true);
+    Queue::fake();
+
+    $videoModel = $this->fakeVideoModelObject($this->filename, $this->disk, $this->originalFile);
+
+    Queue::assertPushedOn(config('hls.queue_name'), QueueHLSConversion::class);
+
+    $job = Queue::pushed(QueueHLSConversion::class)->first();
+    $job->handle();
+
+    $this->assertFalse(
+        $this->fakeFileExists($this->filename, $this->disk),
+        "Original video file {$this->filename} was not deleted after conversion."
+    );
+
+    $this->assertTrue(
+        $videoModel->getHlsPath() === null,
+        "HLS path was not set to null after deleting the original file."
+    );
 });
