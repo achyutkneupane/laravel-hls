@@ -19,7 +19,6 @@ jobs:
             matrix:
                 os: [ ubuntu-latest ]
                 php: [ 8.3 ]
-                ffmpeg: [ 6.1 ]
         steps:
             -   name: Checkout Latest Codebase
                 uses: actions/checkout@v4
@@ -41,12 +40,10 @@ jobs:
                     coverage: xdebug
                     extensions: fileinfo, mbstring, intl
 
-            -   name: Install FFMpeg
-                id: setup-ffmpeg
-                uses: FedericoCarboni/setup-ffmpeg@v3
-                with:
-                    github-token: ${{ secrets.ACCESS_TOKEN }}
-                    ffmpeg-version: ${{ matrix.ffmpeg }}
+            -   name: Install full FFmpeg
+                run: |
+                    sudo apt-get update
+                    sudo apt-get install -y ffmpeg libavcodec-extra
 
             -   name: Install dependencies
                 run: |
@@ -62,7 +59,7 @@ jobs:
 
             -   name: "Run Tests"
                 run: |
-                    ./vendor/bin/pest --colors=always --stop-on-failure --coverage --coverage-clover=coverage.xml --ci
+                    ./vendor/bin/pest --verbose --colors=always --stop-on-failure --coverage --coverage-clover=coverage.xml --ci
 
             -   name: "SonarQube Scan"
                 uses: SonarSource/sonarqube-scan-action@v4
