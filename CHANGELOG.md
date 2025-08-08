@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.13.4 - 2025-08-08
+
+### 🧹 Chores
+
+- chore: `tmp` folder deleted (#22) by @achyutkneupane
+- chore: SonarQube issues fixed (#23) by @achyutkneupane
+- chore: No implementation comments added (#24) by @achyutkneupane
+
 ## v0.13.3 - 2025-08-08
 
 ### 🏗️ Build System
