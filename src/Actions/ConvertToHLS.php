@@ -9,8 +9,9 @@ use Exception;
 use FFMpeg\Format\Video\X264;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Prompts\Progress;
+use InvalidArgumentException;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
+use FFMpeg\Exception\RuntimeException;
 
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\progress;
@@ -46,7 +47,7 @@ final class ConvertToHLS
             $fileResolution = "{$streamVideo->getWidth()}x{$streamVideo->getHeight()}";
         } catch (Exception $e) {
             FFMpeg::cleanupTemporaryFiles();
-            throw new Exception('Failed to open or probe video file.', $e->getCode(), $e);
+            throw new RuntimeException('Failed to open or probe video file.', $e->getCode(), $e);
         }
 
         $formats = [];
@@ -121,7 +122,7 @@ final class ConvertToHLS
             $progress->finish();
         } catch (Exception $e) {
             FFMpeg::cleanupTemporaryFiles();
-            throw new Exception("Failed to prepare formats for HLS conversion: {$e->getMessage()}", $e->getCode(), $e);
+            throw new RuntimeException("Failed to prepare formats for HLS conversion: {$e->getMessage()}", $e->getCode(), $e);
         }
     }
 
@@ -154,7 +155,7 @@ final class ConvertToHLS
             ];
         }
 
-        throw new Exception("Invalid resolution format: {$resolution}. Expected format is '{width}x{height}'.");
+        throw new InvalidArgumentException("Invalid resolution format: {$resolution}. Expected format is '{width}x{height}'.");
     }
 
     /**
@@ -169,7 +170,7 @@ final class ConvertToHLS
     {
         $parts = explode('x', $resolution);
         if (count($parts) !== 2) {
-            throw new Exception("Invalid resolution format: {$resolution}. Expected format is '{width}x{height}'.");
+            throw new InvalidArgumentException("Invalid resolution format: {$resolution}. Expected format is '{width}x{height}'.");
         }
 
         return "{$parts[0]}:{$parts[1]}";

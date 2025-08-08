@@ -37,7 +37,7 @@ it('can push job when video is saved', function () {
 it('does not dispatch job if video_path is empty', function () {
     Queue::fake();
 
-    $video = Video::query()
+    Video::query()
         ->create([
             config('hls.video_column') => '',
             config('hls.progress_column') => 0,
