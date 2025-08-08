@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.13.3 - 2025-08-08
+
+### 🏗️ Build System
+
+- ci: Test Coverage and manual release added (#19) by @achyutkneupane
+- ci: Versions and action for ffmpeg added in workflow (#21) by @achyutkneupane
+
+### 🔍 Tests
+
+- test: Tests for HLS conversion added (#20) by @achyutkneupane
+
 ## v0.13.2 - 2025-08-08
 
 ### 🐛 Bug Fixes
