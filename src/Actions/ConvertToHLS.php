@@ -31,7 +31,8 @@ final class ConvertToHLS
     {
         $startTime = microtime(true);
 
-        $resolutions = config('hls.resolutions');
+        $resolutions = $model->getHLSResolutions();
+
         $kiloBitRates = config('hls.bitrates');
 
         $videoDisk = $model->getVideoDisk();

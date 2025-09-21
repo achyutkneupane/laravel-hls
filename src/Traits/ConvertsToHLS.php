@@ -93,4 +93,9 @@ trait ConvertsToHLS
     {
         return property_exists($this, 'tempStorageOutputPath') ? $this->tempStorageOutputPath : config('hls.temp_storage_path', 'tmp');
     }
+
+    public function getHLSResolutions(): array
+    {
+        return property_exists($this, 'hlsResolutions') ? $this->hlsResolutions : config('hls.resolutions');
+    }
 }
