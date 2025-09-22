@@ -48,7 +48,8 @@ final class QueueHLSConversion implements ShouldQueue
         CheckForDatabaseColumns::handle($this->model);
 
         $original_path = $this->model->getVideoPath();
-        $folderName = uuid_create();
+
+        $folderName = $this->model->getHLSRootFolderPath();
 
         ConvertToHLS::convertToHLS(
             $original_path,

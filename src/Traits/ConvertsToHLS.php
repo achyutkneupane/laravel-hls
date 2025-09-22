@@ -98,4 +98,9 @@ trait ConvertsToHLS
     {
         return property_exists($this, 'hlsResolutions') ? $this->hlsResolutions : config('hls.resolutions');
     }
+
+    public function getHLSRootFolderPath(): string
+    {
+        return uuid_create();
+    }
 }
