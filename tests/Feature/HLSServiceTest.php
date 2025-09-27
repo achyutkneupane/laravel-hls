@@ -82,8 +82,10 @@ it('redirects to public url for public S3 files', function () {
 function s3filesAssertions(string $visibility, string $url): void
 {
     $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
-    $adapter = new class {
-        public function getTemporaryUrl() {
+    $adapter = new class
+    {
+        public function getTemporaryUrl()
+        {
             // this method is mocked, so no implementation needed
         }
     };
@@ -96,7 +98,7 @@ function s3filesAssertions(string $visibility, string $url): void
         $disk->shouldReceive('url')->andReturn($url);
     }
 
-    $service = new \AchyutN\LaravelHLS\Services\HLSService();
+    $service = new HLSService();
 
     $response = (new ReflectionClass($service))
         ->getMethod('serveFileFromDisk')

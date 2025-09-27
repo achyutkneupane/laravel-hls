@@ -79,8 +79,6 @@ describe('exceptions', function () {
         ConvertToHLS::convertToHLS($original_path, $folderName, $this->video144p);
     })->throws(Exception::class, 'Invalid resolution format: 640-360. Expected format is \'{width}x{height}\'.');
 
-
-
     it('throws runtime exception when save fails during conversion', function () {
         // Mock media object to return fake resolution and bitrate
         $mediaMock = Mockery::mock();
@@ -96,7 +94,7 @@ describe('exceptions', function () {
         $exportMock->shouldReceive('addFormat')->andReturnSelf();
         $exportMock->shouldReceive('onProgress')->andReturnSelf();
         $exportMock->shouldReceive('save')
-            ->andThrow(new \Exception('Simulated failure during save'));
+            ->andThrow(new Exception('Simulated failure during save'));
 
         // Mock FFMpeg::fromDisk()->open() calls
         FFMpeg::shouldReceive('fromDisk')
@@ -111,7 +109,7 @@ describe('exceptions', function () {
         FFMpeg::shouldReceive('cleanupTemporaryFiles')->andReturnNull();
 
         // Fake model with required methods
-        $model = Mockery::mock(\Illuminate\Database\Eloquent\Model::class);
+        $model = Mockery::mock(Illuminate\Database\Eloquent\Model::class);
         $model->shouldReceive('getVideoDisk')->andReturn('video-disk');
         $model->shouldReceive('getHlsDisk')->andReturn('hls-disk');
         $model->shouldReceive('getSecretsDisk')->andReturn('secrets-disk');
@@ -129,11 +127,11 @@ describe('exceptions', function () {
     });
 
     it('throws InvalidArgumentException on invalid resolution format in renameResolution', function () {
-        $method = new ReflectionMethod(\AchyutN\LaravelHLS\Actions\ConvertToHLS::class, 'renameResolution');
+        $method = new ReflectionMethod(ConvertToHLS::class, 'renameResolution');
 
         $invalidResolution = 'invalid_format';
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage("Invalid resolution format: {$invalidResolution}. Expected format is '{width}x{height}'.");
 
         $method->invoke(null, $invalidResolution);
