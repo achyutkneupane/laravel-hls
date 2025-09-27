@@ -55,8 +55,8 @@ class HLSService
         }
 
         return FFMpeg::dynamicHLSPlaylist($resolvedModel->getHlsDisk())
-            ->open($path)
             ->fromDisk($resolvedModel->getHlsDisk())
+            ->open($path)
             ->setKeyUrlResolver(fn ($key) => URL::signedRoute(
                 'hls.key',
                 ['model' => $model, 'id' => $id, 'key' => $key]
