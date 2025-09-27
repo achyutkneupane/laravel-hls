@@ -115,8 +115,9 @@ describe('exceptions', function () {
         $model->shouldReceive('getSecretsDisk')->andReturn('secrets-disk');
         $model->shouldReceive('getHLSOutputPath')->andReturn('hls');
         $model->shouldReceive('getHLSSecretsOutputPath')->andReturn('secrets');
+        $model->shouldReceive('getHLSResolutions')->andReturn(['720p' => '1280x720']);
+        $model->shouldReceive('getHLSRootFolderPath')->andReturn('output-folder');
 
-        config()->set('hls.resolutions', ['720p' => '1280x720']);
         config()->set('hls.bitrates', ['720p' => 1500]);
         config()->set('hls.enable_encryption', false);
 
