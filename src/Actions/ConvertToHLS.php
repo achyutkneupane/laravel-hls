@@ -6,12 +6,12 @@ namespace AchyutN\LaravelHLS\Actions;
 
 use AchyutN\LaravelHLS\Jobs\UpdateConversionProgress;
 use Exception;
+use FFMpeg\Exception\RuntimeException;
 use FFMpeg\Format\Video\X264;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
-use FFMpeg\Exception\RuntimeException;
 
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\progress;
@@ -31,7 +31,8 @@ final class ConvertToHLS
     {
         $startTime = microtime(true);
 
-        $resolutions = config('hls.resolutions');
+        $resolutions = $model->getHLSResolutions();
+
         $kiloBitRates = config('hls.bitrates');
 
         $videoDisk = $model->getVideoDisk();
