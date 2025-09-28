@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AchyutN\LaravelHLS\Actions;
 
+use AchyutN\LaravelHLS\Events\HLSConversionCompleted;
+use AchyutN\LaravelHLS\Events\HLSConversionFailed;
 use AchyutN\LaravelHLS\Jobs\UpdateConversionProgress;
 use Exception;
 use FFMpeg\Exception\RuntimeException;
@@ -121,8 +123,11 @@ final class ConvertToHLS
             FFMpeg::cleanupTemporaryFiles();
 
             $progress->finish();
+
+            HLSConversionCompleted::dispatch($model);
         } catch (Exception $e) {
             FFMpeg::cleanupTemporaryFiles();
+            HLSConversionFailed::dispatch($model);
             throw new RuntimeException("Failed to prepare formats for HLS conversion: {$e->getMessage()}", $e->getCode(), $e);
         }
     }
