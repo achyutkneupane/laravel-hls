@@ -11,12 +11,11 @@ use Illuminate\Queue\SerializesModels;
 /**
  * Event fired when HLS conversion completes successfully.
  */
-final class HLSConversionCompleted
+final readonly class HLSConversionCompleted
 {
     use Dispatchable, SerializesModels;
 
     public function __construct(
-        public readonly Model $model,
-    ) {
-    }
+        public Model $model,
+    ) {}
 }
