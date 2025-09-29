@@ -32,6 +32,7 @@ final class ConvertToHLS
     public static function convertToHLS(string $inputPath, string $outputFolder, Model $model): void
     {
         $startTime = microtime(true);
+        $dispatchEvents = config('hls.dispatch_events', false);
 
         $resolutions = $model->getHLSResolutions();
 
@@ -124,10 +125,14 @@ final class ConvertToHLS
 
             $progress->finish();
 
-            HLSConversionCompleted::dispatch($model);
+            if ($dispatchEvents) {
+                HLSConversionCompleted::dispatch($model);
+            }
         } catch (Exception $e) {
             FFMpeg::cleanupTemporaryFiles();
-            HLSConversionFailed::dispatch($model);
+            if ($dispatchEvents) {
+                HLSConversionFailed::dispatch($model);
+            }
             throw new RuntimeException("Failed to prepare formats for HLS conversion: {$e->getMessage()}", $e->getCode(), $e);
         }
     }
