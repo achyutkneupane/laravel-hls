@@ -178,4 +178,11 @@ return [
      */
     'delete_original_file_after_conversion' => false,
 
+    /**
+     * This determines whether the events should be dispatched
+     * when HLS conversion completes or fails.
+     *
+     * Default: false
+     */
+    'dispatch_events' => false,
 ];
