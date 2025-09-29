@@ -99,6 +99,23 @@ class CustomHLSController
 }
 ```
 
+### Events
+
+The package dispatches events on two occasions:
+- `HLSConversionCompleted` - Dispatched when the HLS conversion is successfully completed.
+- `HLSConversionFailed` - Dispatched when the HLS conversion fails.
+
+You can listen to these events in your application to perform actions such as logging, notifications, or further processing.
+
+```php
+Event::listen(
+    HLSConversionCompleted::class,
+    function ($event) {
+        // Handle failed conversion
+    }
+);
+```
+
 ## Configuration
 
 ### Global Configuration
@@ -125,6 +142,7 @@ You can configure the package by editing the `config/hls.php` file. Below are th
 | `model_aliases`                         | An array of model aliases for easy access to HLS conversion.                                  | `array`  | `[]`                  |
 | `register_routes`                       | Whether to register the HLS playlist routes automatically.                                    | `bool`   | `true`                |
 | `delete_original_file_after_conversion` | A bool to turn on/off deleting the original video after conversion.                           | `bool`   | `false`               |
+| `dispatch_events`                       | Whether to dispatch events after conversion completed/failed.                                 | `bool`   | `false`               |
 
 > 💡 Tip: All disk values must be valid disks defined in your `config/filesystems.php`.
 
