@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.15 - 2025-09-29
+
+### v0.15.0 - 2025-09-30
+
+#### 🎉 New Features
+
+- Adds events which are dispatched for success and failure cases by @achyutkneupane in https://github.com/achyutkneupane/laravel-hls/pull/29
+
 ## v0.14.1 - 2025-09-27
 
 - no changes
