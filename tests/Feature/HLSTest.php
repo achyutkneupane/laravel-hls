@@ -90,7 +90,12 @@ it('deletes file after conversion', function () {
     );
 
     $this->assertTrue(
-        $videoModel->getHlsPath() === null,
+        $videoModel->getVideoPath() === null,
+        'Video path was not set to null after deleting the original file.'
+    );
+
+    $this->assertTrue(
+        $videoModel->getHlsPath() !== null,
         'HLS path was not set to null after deleting the original file.'
     );
 });
