@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.15.1 - 2025-10-01
+
+### What's Changed
+
+* Sets video path to null after original file deletion by @achyutkneupane in https://github.com/achyutkneupane/laravel-hls/pull/30
+
 ## v0.15 - 2025-09-29
 
 ### v0.15.0 - 2025-09-30
