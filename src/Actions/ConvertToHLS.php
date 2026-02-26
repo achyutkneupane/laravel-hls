@@ -15,8 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\progress;
+use function Laravel\Prompts\{info,progress};
 
 final class ConvertToHLS
 {
