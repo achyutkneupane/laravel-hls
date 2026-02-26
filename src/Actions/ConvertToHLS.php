@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 
-use function Laravel\Prompts\{info,progress};
+use function Laravel\Prompts\info;
+use function Laravel\Prompts\progress;
 
 final class ConvertToHLS
 {
@@ -55,7 +56,7 @@ final class ConvertToHLS
 
         $formats = [];
 
-        $lowerResolutions = array_filter($resolutions, fn ($resolution): bool => self::extractResolution($resolution)['height'] <= self::extractResolution($fileResolution)['height']);
+        $lowerResolutions = array_filter($resolutions, fn (string $resolution): bool => self::extractResolution($resolution)['height'] <= self::extractResolution($fileResolution)['height']);
 
         foreach ($lowerResolutions as $resolution => $res) {
             $bitrate = $kiloBitRates[$resolution] ?? 1000;
@@ -101,7 +102,7 @@ final class ConvertToHLS
             );
             $progress->start();
 
-            $export->onProgress(function ($percentage) use ($model, $progress, $startTime): void {
+            $export->onProgress(function (float $percentage) use ($model, $progress, $startTime): void {
                 $estimatedTime = self::estimateTime(
                     startTime: $startTime,
                     progress: $percentage
